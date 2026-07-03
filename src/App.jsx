@@ -6,6 +6,7 @@ import { useMedia } from './data/useMedia';
 import { useVehicles } from './data/useVehicles';
 import { useSystems } from './data/useSystems';
 import { useMeals } from './data/useMeals';
+import { useGroceries } from './data/useGroceries';
 import { useWorkouts } from './data/useWorkouts';
 import { useGoals } from './data/useGoals';
 import { TopNav } from './components/TopNav';
@@ -17,6 +18,7 @@ import { SystemsView } from './views/SystemsView';
 import { CalendarView } from './views/CalendarView';
 import { WatchlistView } from './views/WatchlistView';
 import { MealsView } from './views/MealsView';
+import { GroceriesView } from './views/GroceriesView';
 import { FitnessView } from './views/FitnessView';
 import { GoalsView } from './views/GoalsView';
 import { useAuth } from './auth/AuthProvider';
@@ -46,6 +48,7 @@ function Dashboard() {
   const { vehicles, addVehicle, updateVehicle, removeVehicle } = useVehicles();
   const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems();
   const { mealsByKey, setMeal, removeMeal } = useMeals();
+  const groceries = useGroceries();
   const { workouts, addWorkout, removeWorkout } = useWorkouts();
   const goals = useGoals();
 
@@ -90,6 +93,15 @@ function Dashboard() {
         )}
         {view === 'calendar' && <CalendarView tasks={tasks} week={week} />}
         {view === 'meals' && <MealsView mealsByKey={mealsByKey} setMeal={setMeal} removeMeal={removeMeal} />}
+        {view === 'groceries' && (
+          <GroceriesView
+            items={groceries.items}
+            onAdd={groceries.addItem}
+            onToggle={groceries.toggle}
+            onRemove={groceries.removeItem}
+            onClearDone={groceries.clearDone}
+          />
+        )}
         {view === 'watchlist' && (
           <WatchlistView items={media} addItem={addItem} updateItem={updateItem} removeItem={removeItem} />
         )}

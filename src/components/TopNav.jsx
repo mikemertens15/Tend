@@ -12,6 +12,7 @@ const NAV_GROUPS = [
     items: [
       ['chores', 'Chores'],
       ['meals', 'Meals'],
+      ['groceries', 'Groceries'],
       ['vehicles', 'Vehicles'],
       ['systems', 'Systems'],
       ['calendar', 'Calendar'],
