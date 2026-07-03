@@ -1,13 +1,14 @@
 import { colors, tone, fonts, catLabel } from '../theme';
-import { greeting, longDate, shortDate } from '../dates';
+import { greeting, longDate, shortDate, dayStr } from '../dates';
 import { Avatar, Card, Pill, Check, ProgressBar } from '../components/ui';
 import { useIsNarrow } from '../useMediaQuery';
 import { useHousehold } from '../household/HouseholdProvider';
 import { KIND_NOUN } from '../data/useMedia';
+import { targetTone } from '../data/useGoals';
 
 const DUE_RANK = { overdue: 0, today: 1, soon: 2 };
 
-export function HomeView({ tasks, systems, vehicles, media = [], week, onToggle, setView }) {
+export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}, goals = [], week, onToggle, setView }) {
   const narrow = useIsNarrow();
   const { order, currentMember } = useHousehold();
   const greetingName = currentMember?.name || 'there';
@@ -38,6 +39,14 @@ export function HomeView({ tasks, systems, vehicles, media = [], week, onToggle,
       )[0]
     : null;
   const inProgress = media.filter((m) => m.status === 'active').slice(0, 5);
+
+  // Tonight + the next two evenings for the menu card.
+  const menuDays = [0, 1, 2].map((i) => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + i);
+    const label = i === 0 ? 'Tonight' : i === 1 ? 'Tomorrow' : longDate(d).split(',')[0];
+    return { label, meal: mealsByKey[`${dayStr(d)}:dinner`] };
+  });
 
   return (
     <div>
@@ -177,6 +186,55 @@ export function HomeView({ tasks, systems, vehicles, media = [], week, onToggle,
                 <div style={{ width: 9, height: 9, borderRadius: '50%', background: tone[s.tone], flexShrink: 0 }} />
                 <div style={{ flex: 1, font: `500 13.5px ${fonts.sans}`, color: colors.ink }}>{s.name}</div>
                 <div style={{ font: `600 12px ${fonts.sans}`, color: statusColor(s.tone), whiteSpace: 'nowrap' }}>{s.status}</div>
+              </div>
+            ))
+          )}
+        </Card>
+      </div>
+
+      {/* dinner plan + goals */}
+      <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 22, marginTop: 22 }}>
+        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => setView('meals')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>On the menu</div>
+            <div style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>Plan the week</div>
+          </div>
+          {menuDays.map((m, i) => (
+            <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i > 0 ? `1px solid ${colors.divider}` : 'none' }}>
+              <div style={{ width: 76, font: `600 12px ${fonts.sans}`, color: colors.muted2, flexShrink: 0 }}>{m.label}</div>
+              {m.meal ? (
+                <>
+                  <div style={{ flex: 1, font: `600 13.5px ${fonts.sans}`, color: colors.ink, minWidth: 0 }}>{m.meal.title}</div>
+                  {m.meal.cook && <Avatar who={m.meal.cook} size={26} />}
+                </>
+              ) : (
+                <div style={{ flex: 1, font: `400 13px ${fonts.sans}`, color: colors.faint }}>Nothing planned</div>
+              )}
+            </div>
+          ))}
+        </Card>
+
+        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => setView('goals')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
+            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Goals in motion</div>
+            <div style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>All goals</div>
+          </div>
+          {goals.length === 0 ? (
+            <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted, marginTop: 6 }}>
+              No goals yet — a race to run, a room to renovate, a trip to save for.
+            </div>
+          ) : (
+            goals.slice(0, 3).map((g, i) => (
+              <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i > 0 ? `1px solid ${colors.divider}` : 'none' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ font: `600 13.5px ${fonts.sans}`, color: colors.ink }}>{g.title}</div>
+                  <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 1 }}>{g.owner ?? 'Family goal'}</div>
+                </div>
+                {g.target && (
+                  <span style={{ font: `600 11.5px ${fonts.sans}`, color: statusColor(targetTone(g.target.daysLeft)), whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {g.target.daysLeft < 0 ? 'Overdue' : `${g.target.label}`}
+                  </span>
+                )}
               </div>
             ))
           )}

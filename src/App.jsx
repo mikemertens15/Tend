@@ -5,6 +5,9 @@ import { useTasks } from './data/useTasks';
 import { useMedia } from './data/useMedia';
 import { useVehicles } from './data/useVehicles';
 import { useSystems } from './data/useSystems';
+import { useMeals } from './data/useMeals';
+import { useWorkouts } from './data/useWorkouts';
+import { useGoals } from './data/useGoals';
 import { TopNav } from './components/TopNav';
 import { AddTaskModal } from './components/AddTaskModal';
 import { HomeView } from './views/HomeView';
@@ -13,6 +16,9 @@ import { VehiclesView } from './views/VehiclesView';
 import { SystemsView } from './views/SystemsView';
 import { CalendarView } from './views/CalendarView';
 import { WatchlistView } from './views/WatchlistView';
+import { MealsView } from './views/MealsView';
+import { FitnessView } from './views/FitnessView';
+import { GoalsView } from './views/GoalsView';
 import { useAuth } from './auth/AuthProvider';
 import { useHousehold } from './household/HouseholdProvider';
 import { SignIn } from './auth/SignIn';
@@ -39,6 +45,9 @@ function Dashboard() {
   const { items: media, addItem, updateItem, removeItem } = useMedia();
   const { vehicles, addVehicle, updateVehicle, removeVehicle } = useVehicles();
   const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems();
+  const { mealsByKey, setMeal, removeMeal } = useMeals();
+  const { workouts, addWorkout, removeWorkout } = useWorkouts();
+  const goals = useGoals();
 
   // Computed once per mount — the real current week drives greeting + calendar.
   const week = useMemo(() => getWeek(), []);
@@ -59,6 +68,8 @@ function Dashboard() {
             systems={systems}
             vehicles={vehicles}
             media={media}
+            mealsByKey={mealsByKey}
+            goals={goals.active}
             week={week}
             onToggle={toggle}
             setView={setView}
@@ -78,8 +89,21 @@ function Dashboard() {
           />
         )}
         {view === 'calendar' && <CalendarView tasks={tasks} week={week} />}
+        {view === 'meals' && <MealsView mealsByKey={mealsByKey} setMeal={setMeal} removeMeal={removeMeal} />}
         {view === 'watchlist' && (
           <WatchlistView items={media} addItem={addItem} updateItem={updateItem} removeItem={removeItem} />
+        )}
+        {view === 'fitness' && <FitnessView workouts={workouts} onAdd={addWorkout} onRemove={removeWorkout} />}
+        {view === 'goals' && (
+          <GoalsView
+            active={goals.active}
+            done={goals.done}
+            onAdd={goals.addGoal}
+            onUpdate={goals.updateGoal}
+            onRemove={goals.removeGoal}
+            onMarkDone={goals.markDone}
+            onReopen={goals.reopen}
+          />
         )}
       </main>
 

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ModalShell, Label, Chip, inputStyle, PrimaryButton, GhostButton, DeleteButton } from './Modal';
 import { INTERVAL_PRESETS } from '../data/useSystems';
-import { todayStr } from '../dates';
+import { dayStr } from '../dates';
 
 // Add or edit a recurring home-upkeep item. Pass `system` (the raw DB row) to
 // edit; omit it to add. onSave receives DB-column-shaped fields.
@@ -14,7 +14,7 @@ export function SystemModal({ system, onClose, onSave, onDelete }) {
   const [customDays, setCustomDays] = useState(
     system && !presetDays.includes(system.interval_days) ? String(system.interval_days) : '',
   );
-  const [lastDone, setLastDone] = useState(system?.last_done_on ?? todayStr());
+  const [lastDone, setLastDone] = useState(system?.last_done_on ?? dayStr());
   const [note, setNote] = useState(system?.note ?? '');
 
   const custom = customDays !== '';

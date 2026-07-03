@@ -11,12 +11,20 @@ const NAV_GROUPS = [
     label: 'Household',
     items: [
       ['chores', 'Chores'],
+      ['meals', 'Meals'],
       ['vehicles', 'Vehicles'],
       ['systems', 'Systems'],
       ['calendar', 'Calendar'],
     ],
   },
-  { label: 'Life', items: [['watchlist', 'Watchlist']] },
+  {
+    label: 'Life',
+    items: [
+      ['watchlist', 'Watchlist'],
+      ['fitness', 'Fitness'],
+      ['goals', 'Goals'],
+    ],
+  },
 ];
 
 export function TopNav({ view, setView, onAdd, onOpenHousehold }) {

@@ -47,10 +47,11 @@ export function parseDay(s) {
   return new Date(y, m - 1, d);
 }
 
-// Today as a 'YYYY-MM-DD' string in local time, for date columns and inputs.
-export function todayStr(now = new Date()) {
+// A date as a 'YYYY-MM-DD' string in local time (defaults to today), for date
+// columns and date inputs.
+export function dayStr(d = new Date()) {
   const p = (n) => String(n).padStart(2, '0');
-  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
 // Whole days from today until d (negative = that many days ago).

@@ -1,5 +1,7 @@
 import { useEffect } from 'react';
 import { colors, fonts } from '../theme';
+import { Avatar } from './ui';
+import { useHousehold } from '../household/HouseholdProvider';
 
 // Shared dialog chrome for the add/edit modals: dimmed backdrop, cream card,
 // title row with a close button, Escape-to-close. Children are the form body;
@@ -112,6 +114,62 @@ export function GhostButton({ onClick, children }) {
     <button onClick={onClick} style={{ padding: '11px 20px', borderRadius: 22, font: `600 13px ${fonts.sans}`, color: colors.muted2 }}>
       {children}
     </button>
+  );
+}
+
+// Household-member picker (avatar buttons), used by the add/edit modals.
+// `value` is a member id or null. Pass `none` (e.g. "Family", "Anyone") to
+// render a no-specific-person option; without it, clicking the selected
+// member deselects back to null.
+export function MemberPicker({ value, onChange, none }) {
+  const { members } = useHousehold();
+
+  const option = (key, selected, onClick, avatar, label) => (
+    <button
+      key={key}
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
+        padding: '8px 6px',
+        borderRadius: 14,
+        minWidth: 64,
+        flex: '1 0 auto',
+        background: selected ? colors.chipBg : 'transparent',
+        border: `1px solid ${selected ? '#e2b07f' : 'transparent'}`,
+      }}
+    >
+      {avatar}
+      <div style={{ font: `500 11px ${fonts.sans}`, color: colors.muted3 }}>{label}</div>
+    </button>
+  );
+
+  return (
+    <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+      {none &&
+        option(
+          'none',
+          value === null,
+          () => onChange(null),
+          <div
+            style={{ width: 40, height: 40, borderRadius: '50%', background: colors.chipBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}
+          >
+            🏡
+          </div>,
+          none,
+        )}
+      {members.map((m) =>
+        option(
+          m.id,
+          value === m.id,
+          () => onChange(none ? m.id : value === m.id ? null : m.id),
+          <Avatar who={m.name} size={40} />,
+          m.name,
+        ),
+      )}
+    </div>
   );
 }
 

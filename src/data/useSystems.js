@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useHousehold } from '../household/HouseholdProvider';
-import { parseDay, daysUntil, monthDay, todayStr } from '../dates';
+import { parseDay, daysUntil, monthDay, dayStr } from '../dates';
 
 // Supabase-backed store for recurring home upkeep (HVAC filter, gutters, ...).
 // Same shape as the other data hooks: household-scoped rows, realtime sync.
@@ -84,7 +84,7 @@ export function useSystems() {
   );
 
   // "I just did this" — restarts the countdown from today.
-  const markDone = useCallback((id) => updateSystem(id, { last_done_on: todayStr() }), [updateSystem]);
+  const markDone = useCallback((id) => updateSystem(id, { last_done_on: dayStr() }), [updateSystem]);
 
   return { systems, addSystem, updateSystem, removeSystem, markDone };
 }
