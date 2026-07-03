@@ -3,7 +3,8 @@ import { colors, fonts } from './theme';
 import { getWeek } from './dates';
 import { useTasks } from './data/useTasks';
 import { useMedia } from './data/useMedia';
-import { seedSystems, seedVehicles } from './seed';
+import { useVehicles } from './data/useVehicles';
+import { useSystems } from './data/useSystems';
 import { TopNav } from './components/TopNav';
 import { AddTaskModal } from './components/AddTaskModal';
 import { HomeView } from './views/HomeView';
@@ -36,6 +37,8 @@ function Dashboard() {
   const [householdOpen, setHouseholdOpen] = useState(false);
   const { tasks, toggle, addTask } = useTasks();
   const { items: media, addItem, updateItem, removeItem } = useMedia();
+  const { vehicles, addVehicle, updateVehicle, removeVehicle } = useVehicles();
+  const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems();
 
   // Computed once per mount — the real current week drives greeting + calendar.
   const week = useMemo(() => getWeek(), []);
@@ -53,8 +56,8 @@ function Dashboard() {
         {view === 'home' && (
           <HomeView
             tasks={tasks}
-            systems={seedSystems}
-            vehicles={seedVehicles}
+            systems={systems}
+            vehicles={vehicles}
             media={media}
             week={week}
             onToggle={toggle}
@@ -62,8 +65,18 @@ function Dashboard() {
           />
         )}
         {view === 'chores' && <ChoresView tasks={tasks} onToggle={toggle} onAdd={() => setModalOpen(true)} />}
-        {view === 'vehicles' && <VehiclesView vehicles={seedVehicles} />}
-        {view === 'systems' && <SystemsView systems={seedSystems} />}
+        {view === 'vehicles' && (
+          <VehiclesView vehicles={vehicles} onAdd={addVehicle} onUpdate={updateVehicle} onRemove={removeVehicle} />
+        )}
+        {view === 'systems' && (
+          <SystemsView
+            systems={systems}
+            onAdd={addSystem}
+            onUpdate={updateSystem}
+            onRemove={removeSystem}
+            onMarkDone={markDone}
+          />
+        )}
         {view === 'calendar' && <CalendarView tasks={tasks} week={week} />}
         {view === 'watchlist' && (
           <WatchlistView items={media} addItem={addItem} updateItem={updateItem} removeItem={removeItem} />

@@ -88,6 +88,7 @@ export function useTasks() {
   const addTask = useCallback(
     async ({ title, cat, who }) => {
       if (!householdId) return;
+      const jsDay = new Date().getDay(); // place it on today's calendar column (0 = Mon … 6 = Sun)
       const { error } = await supabase.from('tasks').insert({
         household_id: householdId,
         title: (title || '').trim() || 'Untitled task',
@@ -95,7 +96,7 @@ export function useTasks() {
         assignee_id: idByName[who] ?? null,
         due_type: 'soon',
         due_label: 'This week',
-        day: 4,
+        day: jsDay === 0 ? 6 : jsDay - 1,
         done: false,
       });
       if (!error) fetchTasks();

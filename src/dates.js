@@ -38,6 +38,35 @@ export function shortDate(d) {
   return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
 }
 
+// Parse a date-only 'YYYY-MM-DD' string (how Postgres `date` columns arrive)
+// as local midnight — `new Date('2026-08-14')` would parse as UTC and can
+// render as the previous day in western timezones.
+export function parseDay(s) {
+  if (!s) return null;
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// Today as a 'YYYY-MM-DD' string in local time, for date columns and inputs.
+export function todayStr(now = new Date()) {
+  const p = (n) => String(n).padStart(2, '0');
+  return `${now.getFullYear()}-${p(now.getMonth() + 1)}-${p(now.getDate())}`;
+}
+
+// Whole days from today until d (negative = that many days ago).
+export function daysUntil(d, now = new Date()) {
+  const a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  return Math.round((d - a) / 86400000);
+}
+
+export function monthDay(d) {
+  return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
+}
+
+export function monthYear(d) {
+  return `${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
+}
+
 // "June 22 – 28" when both ends share a month, otherwise "Jun 29 – Jul 5".
 export function weekRangeLabel(days) {
   const start = days[0].date;

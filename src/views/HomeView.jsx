@@ -29,7 +29,14 @@ export function HomeView({ tasks, systems, vehicles, media = [], week, onToggle,
     return { name, done, total: mine.length, pct };
   });
 
-  const v = vehicles[0];
+  // Surface the car closest to needing an oil change; untracked cars sort last
+  // (finite sentinel — Infinity - Infinity is NaN and breaks the comparator).
+  const UNTRACKED = Number.MAX_SAFE_INTEGER;
+  const v = vehicles.length
+    ? [...vehicles].sort(
+        (a, b) => (a.oil.tracked ? a.oil.left : UNTRACKED) - (b.oil.tracked ? b.oil.left : UNTRACKED),
+      )[0]
+    : null;
   const inProgress = media.filter((m) => m.status === 'active').slice(0, 5);
 
   return (
@@ -132,31 +139,47 @@ export function HomeView({ tasks, systems, vehicles, media = [], week, onToggle,
         <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => setView('vehicles')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
             <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>In the driveway</div>
-            <div style={{ font: `500 12px ${fonts.sans}`, color: colors.muted }}>{vehicles.length} cars</div>
+            <div style={{ font: `500 12px ${fonts.sans}`, color: colors.muted }}>
+              {vehicles.length} {vehicles.length === 1 ? 'car' : 'cars'}
+            </div>
           </div>
-          <div style={{ font: `600 14.5px ${fonts.sans}`, color: colors.ink }}>
-            {v.name} <span style={{ fontWeight: 400, fontSize: 12, color: colors.muted }}>· {v.miles}</span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', font: `500 12px ${fonts.sans}`, color: colors.muted, margin: '12px 0 7px' }}>
-            <span>Next oil change</span>
-            <span style={{ color: tone.red, fontWeight: 600 }}>{v.oilLeft}</span>
-          </div>
-          <ProgressBar pct={v.oilPct} height={7} />
-          <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-            <SummaryChip>Reg. renews {v.reg}</SummaryChip>
-            <SummaryChip>Tires rotated {v.tires.split(' ')[0]}</SummaryChip>
-          </div>
+          {v ? (
+            <>
+              <div style={{ font: `600 14.5px ${fonts.sans}`, color: colors.ink }}>
+                {v.name} <span style={{ fontWeight: 400, fontSize: 12, color: colors.muted }}>· {v.milesLabel}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', font: `500 12px ${fonts.sans}`, color: colors.muted, margin: '12px 0 7px' }}>
+                <span>Next oil change</span>
+                <span style={{ color: v.oil.urgent ? tone.red : tone.green, fontWeight: 600 }}>{v.oil.label}</span>
+              </div>
+              <ProgressBar pct={v.oil.pct} height={7} />
+              <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+                {v.reg && <SummaryChip>Reg. renews {v.reg}</SummaryChip>}
+                {v.tires && <SummaryChip>Tires rotated {v.tires}</SummaryChip>}
+              </div>
+            </>
+          ) : (
+            <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted }}>
+              No cars yet — add one to track oil changes, registration and insurance.
+            </div>
+          )}
         </Card>
 
         <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => setView('systems')}>
           <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink, marginBottom: 14 }}>House health</div>
-          {systems.slice(0, 4).map((s) => (
-            <div key={s.name} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 0', borderBottom: `1px solid ${colors.divider}` }}>
-              <div style={{ width: 9, height: 9, borderRadius: '50%', background: tone[s.tone], flexShrink: 0 }} />
-              <div style={{ flex: 1, font: `500 13.5px ${fonts.sans}`, color: colors.ink }}>{s.name}</div>
-              <div style={{ font: `600 12px ${fonts.sans}`, color: statusColor(s.tone), whiteSpace: 'nowrap' }}>{s.status}</div>
+          {systems.length === 0 ? (
+            <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted }}>
+              Nothing tracked yet — add the HVAC filter, gutters, smoke detectors…
             </div>
-          ))}
+          ) : (
+            systems.slice(0, 4).map((s) => (
+              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 0', borderBottom: `1px solid ${colors.divider}` }}>
+                <div style={{ width: 9, height: 9, borderRadius: '50%', background: tone[s.tone], flexShrink: 0 }} />
+                <div style={{ flex: 1, font: `500 13.5px ${fonts.sans}`, color: colors.ink }}>{s.name}</div>
+                <div style={{ font: `600 12px ${fonts.sans}`, color: statusColor(s.tone), whiteSpace: 'nowrap' }}>{s.status}</div>
+              </div>
+            ))
+          )}
         </Card>
       </div>
 
