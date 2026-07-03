@@ -1,8 +1,9 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 
-// Tracks the Supabase auth session and exposes the two actions the app needs:
-// send a passwordless magic link, and sign out.
+// Tracks the Supabase auth session and exposes the auth actions the app needs:
+// magic-link sign-in (first-time setup + fallback), password sign-in for
+// return visits on new devices, setting a password, and signing out.
 const AuthContext = createContext(null);
 
 export function useAuth() {
@@ -36,10 +37,26 @@ export function AuthProvider({ children }) {
     if (error) throw error;
   }, []);
 
+  // Email + password sign-in — no email round-trip. Works once the user has
+  // set a password (HouseholdModal → "Your sign-in").
+  const signInWithPassword = useCallback(async (email, password) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email: (email || '').trim(),
+      password,
+    });
+    if (error) throw error;
+  }, []);
+
+  // Attach a password to the signed-in (magic-link-created) account.
+  const setPassword = useCallback(async (password) => {
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+  }, []);
+
   const signOut = useCallback(async () => {
     await supabase.auth.signOut();
   }, []);
 
-  const value = { session, loading, signInWithMagicLink, signOut };
+  const value = { session, loading, signInWithMagicLink, signInWithPassword, setPassword, signOut };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

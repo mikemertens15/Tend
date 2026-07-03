@@ -8,10 +8,13 @@ import { useAuth } from '../auth/AuthProvider';
 // invite code, see/add members, and sign out.
 export function HouseholdModal({ onClose }) {
   const { household, members, addMember, currentMember } = useHousehold();
-  const { signOut } = useAuth();
+  const { signOut, setPassword } = useAuth();
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pw, setPw] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState(null); // { ok: boolean, text: string }
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose();
@@ -34,6 +37,21 @@ export function HouseholdModal({ onClose }) {
     navigator.clipboard?.writeText(household?.join_code || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  async function savePassword() {
+    if (pw.length < 6 || pwBusy) return;
+    setPwBusy(true);
+    setPwMsg(null);
+    try {
+      await setPassword(pw);
+      setPw('');
+      setPwMsg({ ok: true, text: 'Password saved — from now on you can sign in with it directly, no email needed.' });
+    } catch (err) {
+      setPwMsg({ ok: false, text: err?.message || 'Something went wrong. Try again.' });
+    } finally {
+      setPwBusy(false);
+    }
   }
 
   return (
@@ -165,6 +183,53 @@ export function HouseholdModal({ onClose }) {
         </div>
         <div style={{ font: `400 12px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: -16, marginBottom: 22 }}>
           People you add can be assigned chores. To give someone their own login, share the invite code above.
+        </div>
+
+        {/* Password — so signing in on a new device doesn't need an email link */}
+        <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: 20, marginBottom: 24 }}>
+          <Label>Your sign-in</Label>
+          <div style={{ font: `400 12px/1.5 ${fonts.sans}`, color: colors.muted, marginBottom: 10 }}>
+            Set a password (6+ characters) to skip the email link when signing in on a new device.
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input
+              type="password"
+              value={pw}
+              onChange={(e) => setPw(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && savePassword()}
+              placeholder="New password"
+              style={{
+                flex: 1,
+                border: '1px solid #e5d6c3',
+                background: colors.inputBg,
+                borderRadius: 12,
+                padding: '11px 14px',
+                font: `500 14px ${fonts.sans}`,
+                color: colors.ink,
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={savePassword}
+              disabled={pwBusy || pw.length < 6}
+              style={{
+                padding: '11px 18px',
+                borderRadius: 12,
+                background: colors.accent,
+                color: '#fff',
+                font: `600 13px ${fonts.sans}`,
+                opacity: pwBusy || pw.length < 6 ? 0.6 : 1,
+                cursor: pwBusy || pw.length < 6 ? 'default' : 'pointer',
+              }}
+            >
+              {pwBusy ? 'Saving…' : 'Save'}
+            </button>
+          </div>
+          {pwMsg && (
+            <div style={{ font: `500 12px/1.5 ${fonts.sans}`, color: pwMsg.ok ? '#5a7a63' : colors.accentDark, marginTop: 8 }}>
+              {pwMsg.text}
+            </div>
+          )}
         </div>
 
         <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: 18, display: 'flex', justifyContent: 'flex-end' }}>
