@@ -5,6 +5,9 @@ import { useHousehold } from '../household/HouseholdProvider';
 // Grouped navigation. Home is the always-first landing pad; the rest cluster
 // into the "Household" (home-maintenance) and "Life" domains so the app can grow
 // past the home dashboard without crowding a flat tab bar.
+//
+// Hobbies is a single entry on purpose: individual hobbies live behind its
+// landing page, so picking up a new one never adds a tab here.
 const NAV_GROUPS = [
   { label: null, items: [['home', 'Home']] },
   {
@@ -21,14 +24,14 @@ const NAV_GROUPS = [
   {
     label: 'Life',
     items: [
-      ['watchlist', 'Watchlist'],
+      ['hobbies', 'Hobbies'],
       ['fitness', 'Fitness'],
       ['goals', 'Goals'],
     ],
   },
 ];
 
-export function TopNav({ view, setView, onAdd, onOpenHousehold }) {
+export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
   const { currentMember } = useHousehold();
   return (
     <div
@@ -85,7 +88,8 @@ export function TopNav({ view, setView, onAdd, onOpenHousehold }) {
                 </span>
               )}
               {group.items.map(([key, label]) => {
-                const active = view === key;
+                // Keep Hobbies lit while you're inside one of its sections.
+                const active = view === key || (key === 'hobbies' && hobbyRoute);
                 return (
                   <button
                     key={key}

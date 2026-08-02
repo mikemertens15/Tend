@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import { colors, fonts } from './theme';
 import { getWeek } from './dates';
+import { useHashRoute } from './useHashRoute';
 import { useTasks } from './data/useTasks';
-import { useMedia } from './data/useMedia';
 import { useVehicles } from './data/useVehicles';
 import { useSystems } from './data/useSystems';
 import { useMeals } from './data/useMeals';
@@ -16,7 +16,9 @@ import { ChoresView } from './views/ChoresView';
 import { VehiclesView } from './views/VehiclesView';
 import { SystemsView } from './views/SystemsView';
 import { CalendarView } from './views/CalendarView';
-import { WatchlistView } from './views/WatchlistView';
+import { HobbiesView } from './views/HobbiesView';
+import { CollectionView } from './views/CollectionView';
+import { sectionByKey } from './data/collections';
 import { MealsView } from './views/MealsView';
 import { GroceriesView } from './views/GroceriesView';
 import { FitnessView } from './views/FitnessView';
@@ -24,15 +26,18 @@ import { GoalsView } from './views/GoalsView';
 import { useAuth } from './auth/AuthProvider';
 import { useHousehold } from './household/HouseholdProvider';
 import { SignIn } from './auth/SignIn';
+import { ResetPassword } from './auth/ResetPassword';
 import { Onboarding } from './household/Onboarding';
 import { HouseholdModal } from './household/HouseholdModal';
 
 export default function App() {
-  const { session, loading: authLoading } = useAuth();
+  const { session, loading: authLoading, recovering } = useAuth();
   const { household, loading: householdLoading } = useHousehold();
 
-  // Gate: load session → sign in → load household → onboarding → the app.
+  // Gate: load session → set a new password (if we got here from a reset
+  // email) → sign in → load household → onboarding → the app.
   if (authLoading) return <Splash />;
+  if (recovering && session) return <ResetPassword />;
   if (!session) return <SignIn />;
   if (householdLoading) return <Splash />;
   if (!household) return <Onboarding />;
@@ -40,11 +45,12 @@ export default function App() {
 }
 
 function Dashboard() {
-  const [view, setView] = useState('home');
+  // Routing lives in the URL hash, so views deep-link, the back button works,
+  // and a refresh stays where you were.
+  const [view, navigate] = useHashRoute('home');
   const [modalOpen, setModalOpen] = useState(false);
   const [householdOpen, setHouseholdOpen] = useState(false);
   const { tasks, toggle, addTask } = useTasks();
-  const { items: media, addItem, updateItem, removeItem } = useMedia();
   const { vehicles, addVehicle, updateVehicle, removeVehicle } = useVehicles();
   const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems();
   const { mealsByKey, setMeal, removeMeal } = useMeals();
@@ -55,27 +61,37 @@ function Dashboard() {
   // Computed once per mount — the real current week drives greeting + calendar.
   const week = useMemo(() => getWeek(), []);
 
+  // A hobby section route ('games', 'books', …) renders the shared collection
+  // view; anything unrecognised falls through to Home.
+  const hobbySection = sectionByKey(view);
+
   return (
     <div style={{ minHeight: '100vh', background: colors.bg }}>
       <TopNav
         view={view}
-        setView={setView}
+        setView={navigate}
+        hobbyRoute={Boolean(hobbySection)}
         onAdd={() => setModalOpen(true)}
         onOpenHousehold={() => setHouseholdOpen(true)}
       />
 
       <main style={{ maxWidth: 1180, margin: '0 auto', padding: '30px 36px 70px' }}>
+        {/* Keyed so switching sections remounts: the view holds per-section
+            state (selected domain, owner filter) that must not carry over. */}
+        {hobbySection && (
+          <CollectionView key={hobbySection.key} section={hobbySection} navigate={navigate} />
+        )}
+        {view === 'hobbies' && <HobbiesView navigate={navigate} />}
         {view === 'home' && (
           <HomeView
             tasks={tasks}
             systems={systems}
             vehicles={vehicles}
-            media={media}
             mealsByKey={mealsByKey}
             goals={goals.active}
             week={week}
             onToggle={toggle}
-            setView={setView}
+            navigate={navigate}
           />
         )}
         {view === 'chores' && <ChoresView tasks={tasks} onToggle={toggle} onAdd={() => setModalOpen(true)} />}
@@ -101,9 +117,6 @@ function Dashboard() {
             onRemove={groceries.removeItem}
             onClearDone={groceries.clearDone}
           />
-        )}
-        {view === 'watchlist' && (
-          <WatchlistView items={media} addItem={addItem} updateItem={updateItem} removeItem={removeItem} />
         )}
         {view === 'fitness' && <FitnessView workouts={workouts} onAdd={addWorkout} onRemove={removeWorkout} />}
         {view === 'goals' && (

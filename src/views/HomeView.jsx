@@ -3,14 +3,16 @@ import { greeting, longDate, shortDate, dayStr } from '../dates';
 import { Avatar, Card, Pill, Check, ProgressBar } from '../components/ui';
 import { useIsNarrow } from '../useMediaQuery';
 import { useHousehold } from '../household/HouseholdProvider';
-import { KIND_NOUN } from '../data/useMedia';
+import { useCollection } from '../data/useCollection';
+import { DOMAINS, ALL_HOBBY_DOMAINS } from '../data/collections';
 import { targetTone } from '../data/useGoals';
 
 const DUE_RANK = { overdue: 0, today: 1, soon: 2 };
 
-export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}, goals = [], week, onToggle, setView }) {
+export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = [], week, onToggle, navigate }) {
   const narrow = useIsNarrow();
   const { order, currentMember } = useHousehold();
+  const { items: hobbies } = useCollection(ALL_HOBBY_DOMAINS);
   const greetingName = currentMember?.name || 'there';
   const today = week.days[week.todayIndex].date;
 
@@ -38,7 +40,7 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
         (a, b) => (a.oil.tracked ? a.oil.left : UNTRACKED) - (b.oil.tracked ? b.oil.left : UNTRACKED),
       )[0]
     : null;
-  const inProgress = media.filter((m) => m.status === 'active').slice(0, 5);
+  const inProgress = hobbies.filter((m) => m.status === 'active').slice(0, 5);
 
   // Tonight + the next two evenings for the menu card.
   const menuDays = [0, 1, 2].map((i) => {
@@ -90,7 +92,7 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
         <Card style={{ padding: '22px 26px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
             <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>The family this week</div>
-            <button onClick={() => setView('chores')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
+            <button onClick={() => navigate('chores')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
               Manage chores
             </button>
           </div>
@@ -117,7 +119,7 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
       <Card style={{ padding: '22px 26px', marginBottom: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
           <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Up next</div>
-          <button onClick={() => setView('calendar')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
+          <button onClick={() => navigate('calendar')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
             See the week
           </button>
         </div>
@@ -145,7 +147,7 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
 
       {/* vehicle + systems summary */}
       <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 22 }}>
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => setView('vehicles')}>
+        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('vehicles')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
             <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>In the driveway</div>
             <div style={{ font: `500 12px ${fonts.sans}`, color: colors.muted }}>
@@ -174,7 +176,7 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
           )}
         </Card>
 
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => setView('systems')}>
+        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('systems')}>
           <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink, marginBottom: 14 }}>House health</div>
           {systems.length === 0 ? (
             <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted }}>
@@ -194,7 +196,7 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
 
       {/* dinner plan + goals */}
       <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 22, marginTop: 22 }}>
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => setView('meals')}>
+        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('meals')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
             <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>On the menu</div>
             <div style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>Plan the week</div>
@@ -214,7 +216,7 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
           ))}
         </Card>
 
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => setView('goals')}>
+        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('goals')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
             <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Goals in motion</div>
             <div style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>All goals</div>
@@ -244,14 +246,14 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
       {/* a little life beyond the house */}
       <Card style={{ padding: '22px 26px', marginTop: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: inProgress.length ? 14 : 0 }}>
-          <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Currently playing &amp; watching</div>
-          <button onClick={() => setView('watchlist')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
-            Watchlist
+          <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>On the go</div>
+          <button onClick={() => navigate('hobbies')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
+            Hobbies
           </button>
         </div>
         {inProgress.length === 0 ? (
           <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted, marginTop: 10 }}>
-            Nothing in progress — add a game, show, or movie to your watchlist.
+            Nothing in progress — start a game, a book, or something on the bench.
           </div>
         ) : (
           inProgress.map((m, i) => (
@@ -269,10 +271,10 @@ export function HomeView({ tasks, systems, vehicles, media = [], mealsByKey = {}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ font: `600 14px ${fonts.sans}`, color: colors.ink }}>{m.title}</div>
                 <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-                  {[m.owner, m.platform || m.service].filter(Boolean).join(' · ') || '—'}
+                  {[m.owner, m.platform || m.service || m.author || m.craft].filter(Boolean).join(' · ') || '—'}
                 </div>
               </div>
-              <SummaryChip>{KIND_NOUN[m.kind]}</SummaryChip>
+              <SummaryChip>{DOMAINS[m.domain].noun}</SummaryChip>
             </div>
           ))
         )}

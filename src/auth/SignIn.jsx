@@ -4,28 +4,33 @@ import { useAuth } from './AuthProvider';
 
 // Sign-in screen. Email + password is the everyday path (no email round-trip);
 // the emailed magic link remains for first-time setup and as the fallback for
-// anyone who hasn't set a password yet.
+// anyone who hasn't set a password yet, and a reset link covers a forgotten one.
 export function SignIn() {
-  const { signInWithMagicLink, signInWithPassword } = useAuth();
+  const { signInWithMagicLink, signInWithPassword, sendPasswordReset, linkError, clearLinkError } =
+    useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState(null); // null | 'link' | 'reset'
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
   const canSubmit = email.trim() && password && !busy;
+  // An expired or already-used email link reports itself in the URL; show that
+  // once, then let normal form errors take over.
+  const notice = error || linkError;
 
   async function submit(e) {
     e?.preventDefault();
     if (!canSubmit) return;
     setBusy(true);
     setError('');
+    clearLinkError();
     try {
       await signInWithPassword(email, password);
     } catch (err) {
       setError(
         /invalid/i.test(err?.message || '')
-          ? "That didn't match. If you haven't set a password yet, use the email link below."
+          ? "That didn't match. Reset it below, or use an email link if you never set one."
           : err?.message || 'Something went wrong. Try again.',
       );
     } finally {
@@ -33,13 +38,15 @@ export function SignIn() {
     }
   }
 
-  async function sendLink() {
+  // Both email paths behave identically apart from which mail goes out.
+  async function mail(kind) {
     if (!email.trim() || busy) return;
     setBusy(true);
     setError('');
+    clearLinkError();
     try {
-      await signInWithMagicLink(email);
-      setSent(true);
+      await (kind === 'reset' ? sendPasswordReset(email) : signInWithMagicLink(email));
+      setSent(kind);
     } catch (err) {
       setError(err?.message || 'Something went wrong. Try again.');
     } finally {
@@ -56,14 +63,14 @@ export function SignIn() {
             Check your inbox
           </div>
           <div style={{ font: `400 14px/1.5 ${fonts.sans}`, color: colors.muted2, marginBottom: 22 }}>
-            We sent a sign-in link to <b style={{ color: colors.ink }}>{email}</b>. Open it on this
-            device to continue.
+            We sent {sent === 'reset' ? 'a link to reset your password' : 'a sign-in link'} to{' '}
+            <b style={{ color: colors.ink }}>{email}</b>. Open it on this device to continue.
           </div>
           <button
-            onClick={() => setSent(false)}
+            onClick={() => setSent(null)}
             style={{ font: `600 13px ${fonts.sans}`, color: colors.accent }}
           >
-            Use a different email
+            Back to sign in
           </button>
         </div>
       ) : (
@@ -87,19 +94,33 @@ export function SignIn() {
             style={inputStyle(18)}
           />
 
-          <label style={{ font: `600 12px ${fonts.sans}`, color: colors.muted2, display: 'block', marginBottom: 8 }}>
-            Password
-          </label>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+            <label style={{ font: `600 12px ${fonts.sans}`, color: colors.muted2 }}>Password</label>
+            <button
+              type="button"
+              onClick={() => mail('reset')}
+              disabled={busy || !email.trim()}
+              title={email.trim() ? 'Email a reset link' : 'Enter your email first'}
+              style={{
+                font: `600 12px ${fonts.sans}`,
+                color: colors.accent,
+                opacity: busy || !email.trim() ? 0.5 : 1,
+                cursor: busy || !email.trim() ? 'default' : 'pointer',
+              }}
+            >
+              Forgot password?
+            </button>
+          </div>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
-            style={inputStyle(error ? 8 : 18)}
+            style={inputStyle(notice ? 8 : 18)}
           />
-          {error && (
+          {notice && (
             <div style={{ font: `500 12.5px/1.45 ${fonts.sans}`, color: colors.accentDark, marginBottom: 16 }}>
-              {error}
+              {notice}
             </div>
           )}
 
@@ -127,7 +148,7 @@ export function SignIn() {
             </div>
             <button
               type="button"
-              onClick={sendLink}
+              onClick={() => mail('link')}
               disabled={busy || !email.trim()}
               style={{
                 font: `600 13px ${fonts.sans}`,
