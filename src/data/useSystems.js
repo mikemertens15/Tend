@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useHousehold } from '../household/HouseholdProvider';
-import { parseDay, daysUntil, monthDay, dayStr } from '../dates';
+import { dayStr } from '../dates';
+import { dueStatus, intervalLabel } from './cadence';
 
 // Supabase-backed store for recurring home upkeep (HVAC filter, gutters, ...).
 // Same shape as the other data hooks: household-scoped rows, realtime sync.
@@ -89,48 +90,13 @@ export function useSystems() {
   return { systems, addSystem, updateSystem, removeSystem, markDone };
 }
 
-// Sort sentinel for items with no last-done date: a finite "very far away"
-// (Infinity - Infinity is NaN, which would make the sort comparator unstable).
-export const UNTRACKED = Number.MAX_SAFE_INTEGER;
-
-// Derive the traffic-light state a row renders with. Never-logged items sit at
-// the end of the list with an amber "log it" nudge.
+// The countdown itself lives in cadence.js (pet care runs on the same clock);
+// all this adds is the subtitle line, which a note can override.
 function systemStatus(r) {
+  const s = dueStatus(r.last_done_on, r.interval_days);
   const cadence = intervalLabel(r.interval_days);
-  if (!r.last_done_on) {
-    return {
-      tone: 'amber',
-      status: 'Not logged',
-      detail: r.note || `${cadence} · mark it done once to start tracking`,
-      daysLeft: UNTRACKED,
-    };
-  }
-  const due = parseDay(r.last_done_on);
-  due.setDate(due.getDate() + r.interval_days);
-  const daysLeft = daysUntil(due);
-  const detail = r.note || `${cadence} · last done ${monthDay(parseDay(r.last_done_on))}`;
-
-  if (daysLeft < 0) return { tone: 'red', status: `Overdue ${-daysLeft}d`, detail, daysLeft };
-  if (daysLeft === 0) return { tone: 'red', status: 'Due today', detail, daysLeft };
-  if (daysLeft <= 21) {
-    const status = daysLeft <= 10 ? `In ${daysLeft}d` : `In ${Math.round(daysLeft / 7)} wks`;
-    return { tone: 'amber', status, detail, daysLeft };
-  }
-  const status = daysLeft > 60 ? 'Good' : `In ${Math.round(daysLeft / 7)} wks`;
-  return { tone: 'green', status, detail, daysLeft };
+  const detail =
+    r.note ||
+    (s.tracked ? `${cadence} · last done ${s.lastLabel}` : `${cadence} · mark it done once to start tracking`);
+  return { tone: s.tone, status: s.status, detail, daysLeft: s.daysLeft };
 }
-
-export function intervalLabel(days) {
-  const named = INTERVAL_PRESETS.find(([d]) => d === days);
-  if (named) return named[1];
-  return `Every ${days} days`;
-}
-
-// Cadence chips for the system modal.
-export const INTERVAL_PRESETS = [
-  [7, 'Weekly'],
-  [30, 'Monthly'],
-  [90, 'Every 3 months'],
-  [180, 'Every 6 months'],
-  [365, 'Yearly'],
-];

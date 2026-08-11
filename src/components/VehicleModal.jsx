@@ -111,7 +111,7 @@ export function VehicleModal({ vehicle, onClose, onSave, onDelete }) {
                 minWidth: 64,
                 flex: '1 0 auto',
                 background: sel ? colors.chipBg : 'transparent',
-                border: `1px solid ${sel ? '#e2b07f' : 'transparent'}`,
+                border: `1px solid ${sel ? colors.selected : 'transparent'}`,
               }}
             >
               <Avatar who={m.name} size={40} />

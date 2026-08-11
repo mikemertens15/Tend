@@ -64,6 +64,18 @@ export function monthDay(d) {
   return `${MONTHS_SHORT[d.getMonth()]} ${d.getDate()}`;
 }
 
+// 'Mon' … 'Sun'. DOWS is Monday-first; getDay() is Sunday-first.
+export function shortDay(d) {
+  return DOWS[(d.getDay() + 6) % 7];
+}
+
+// Add days to a 'YYYY-MM-DD' string and get one back.
+export function addDays(dayString, n) {
+  const d = parseDay(dayString);
+  d.setDate(d.getDate() + n);
+  return dayStr(d);
+}
+
 export function monthYear(d) {
   return `${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }

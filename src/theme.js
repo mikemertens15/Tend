@@ -1,34 +1,53 @@
-// Direction B — "Warm & homey" palette, ported from the Tend design handoff.
+// Design tokens. Every value is a CSS custom property reference rather than a
+// literal, so the same `colors.ink` works in both skins — the palettes live in
+// index.css and the browser resolves whichever `data-theme` is on <html>.
+//
+// Skins: "warm" is Direction B from the Tend handoff (cream + terracotta);
+// "dark" is Direction C, the always-on kitchen-tablet wall display.
 
 export const colors = {
-  bg: '#f4ece1',
-  card: '#fffdf9',
-  cardBorder: '#ece0d0',
-  navBar: 'rgba(255,253,249,.92)',
-  accent: '#c2724a',
-  accentDark: '#ad6340',
-  ink: '#3a2e25',
-  muted: '#a8906f',
-  muted2: '#8a7257',
-  muted3: '#6b5640',
-  faint: '#bba88c',
-  divider: '#f3eadd',
-  chipBg: '#f3e7d8',
-  inputBg: '#faf2e8',
-  track: '#f0e5d6',
+  bg: 'var(--c-bg)',
+  card: 'var(--c-card)',
+  cardBorder: 'var(--c-card-border)',
+  navBar: 'var(--c-nav-bar)',
+  accent: 'var(--c-accent)',
+  accentDark: 'var(--c-accent-dark)',
+  onAccent: 'var(--c-on-accent)',
+  ink: 'var(--c-ink)',
+  muted: 'var(--c-muted)',
+  muted2: 'var(--c-muted2)',
+  muted3: 'var(--c-muted3)',
+  faint: 'var(--c-faint)',
+  divider: 'var(--c-divider)',
+  chipBg: 'var(--c-chip-bg)',
+  inputBg: 'var(--c-input-bg)',
+  inputBorder: 'var(--c-input-border)',
+  track: 'var(--c-track)',
+  starEmpty: 'var(--c-star-empty)',
+  selected: 'var(--c-selected)',
+  todayBg: 'var(--c-today-bg)',
 };
 
-// Status tones for systems / vehicles.
+// Status tones for systems / vehicles / pet care.
 export const tone = {
-  red: '#c0654b',
-  amber: '#d8a657',
-  amberText: '#b07d2e',
-  green: '#7f9b86',
+  red: 'var(--t-red)',
+  amber: 'var(--t-amber)',
+  amberText: 'var(--t-amber-text)',
+  green: 'var(--t-green)',
 };
 
-// Member avatar colors. Real members live in the database now (see
-// HouseholdProvider); this palette is cycled through to color new members so
-// each person in a household gets a distinct, on-brand avatar.
+export const heroGradient = 'var(--g-hero)';
+
+export const shadows = {
+  accent: 'var(--s-accent)',
+  modal: 'var(--s-modal)',
+  backdrop: 'var(--s-backdrop)',
+};
+
+// Member avatar colors. Unlike everything above these are real hex values:
+// they're written into the database per member when someone joins, so they
+// have to survive outside the stylesheet. Both palettes are light pastels with
+// dark initials, which stay legible on either skin.
 export const AVATAR_PALETTE = [
   { bg: '#e2b4ba', color: '#5a2730' },
   { bg: '#a9c3b3', color: '#234034' },

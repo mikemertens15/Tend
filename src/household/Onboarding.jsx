@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { colors, fonts } from '../theme';
+import { colors, shadows, fonts } from '../theme';
 import { useHousehold } from './HouseholdProvider';
 import { useAuth } from '../auth/AuthProvider';
 import { Shell } from '../auth/SignIn';
@@ -96,9 +96,9 @@ export function Onboarding() {
             padding: '13px',
             borderRadius: 22,
             background: colors.accent,
-            color: '#fff',
+            color: colors.onAccent,
             font: `600 14px ${fonts.sans}`,
-            boxShadow: '0 2px 8px rgba(194,114,74,.3)',
+            boxShadow: shadows.accent,
             opacity: busy ? 0.6 : 1,
             cursor: busy ? 'default' : 'pointer',
           }}
@@ -127,7 +127,7 @@ function Tab({ active, onClick, children }) {
         borderRadius: 12,
         font: `600 13px ${fonts.sans}`,
         background: active ? colors.accent : colors.inputBg,
-        color: active ? '#fff' : colors.muted2,
+        color: active ? colors.onAccent : colors.muted2,
         border: `1px solid ${active ? 'transparent' : colors.cardBorder}`,
         cursor: 'pointer',
       }}
@@ -157,7 +157,7 @@ function Input({ value, onChange, placeholder, autoFocus, style }) {
       placeholder={placeholder}
       style={{
         width: '100%',
-        border: '1px solid #e5d6c3',
+        border: `1px solid ${colors.inputBorder}`,
         background: colors.inputBg,
         borderRadius: 12,
         padding: '12px 14px',

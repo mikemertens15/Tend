@@ -1,3 +1,86 @@
+/* Both skins live here as custom properties, and theme.js hands every colour
+   out as a `var(--…)` reference. That means a component never knows which skin
+   it's in — it writes `colors.ink` into an inline style exactly as before, and
+   the browser resolves it per theme.
+
+   `data-theme` is stamped on <html> by the boot script in index.html before
+   first paint, so there's always an explicit value and no flash of the wrong
+   skin. Light is the default; dark is "Direction C — wall display" from the
+   original Tend handoff, meant for an always-on kitchen tablet. */
+
+:root {
+  color-scheme: light;
+
+  --c-bg: #f4ece1;
+  --c-card: #fffdf9;
+  --c-card-border: #ece0d0;
+  --c-nav-bar: rgba(255, 253, 249, 0.92);
+  --c-accent: #c2724a;
+  --c-accent-dark: #ad6340;
+  --c-on-accent: #fff;
+  --c-ink: #3a2e25;
+  --c-muted: #a8906f;
+  --c-muted2: #8a7257;
+  --c-muted3: #6b5640;
+  --c-faint: #bba88c;
+  --c-divider: #f3eadd;
+  --c-chip-bg: #f3e7d8;
+  --c-input-bg: #faf2e8;
+  --c-input-border: #e5d6c3;
+  --c-track: #f0e5d6;
+  --c-star-empty: #dcc9b0;
+  --c-selected: #e2b07f;
+  --c-today-bg: #fff7ee;
+  --c-scroll-thumb: #d8c9b6;
+
+  --t-red: #c0654b;
+  --t-amber: #d8a657;
+  --t-amber-text: #b07d2e;
+  --t-green: #7f9b86;
+
+  --g-hero: linear-gradient(135deg, #c2724a, #a85a3a);
+  --s-accent: 0 2px 8px rgba(194, 114, 74, 0.3);
+  --s-modal: 0 24px 60px rgba(40, 25, 15, 0.3);
+  --s-backdrop: rgba(58, 46, 37, 0.4);
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --c-bg: #17120f;
+  --c-card: #221c17;
+  --c-card-border: #332a22;
+  --c-nav-bar: rgba(23, 18, 15, 0.92);
+  --c-accent: #d0784e;
+  --c-accent-dark: #b96540;
+  --c-on-accent: #fff;
+  --c-ink: #f3e8db;
+  --c-muted: #9a8871;
+  --c-muted2: #b6a389;
+  --c-muted3: #cdbda6;
+  --c-faint: #7a6a59;
+  --c-divider: #2c241d;
+  --c-chip-bg: #33291f;
+  --c-input-bg: #1d1713;
+  --c-input-border: #3d3227;
+  --c-track: #2f2720;
+  --c-star-empty: #4a3d31;
+  --c-selected: #8a5c3c;
+  --c-today-bg: #2a2018;
+  --c-scroll-thumb: #3d332a;
+
+  /* Nudged lighter so the traffic lights still read against a dark card. */
+  --t-red: #d1795e;
+  --t-amber: #d8a657;
+  --t-amber-text: #d2a05a;
+  --t-green: #8fae99;
+
+  --g-hero: linear-gradient(135deg, #a55735, #743923);
+  --s-accent: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --s-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --s-backdrop: rgba(10, 7, 5, 0.6);
+}
+
 * { box-sizing: border-box; }
 
 html, body, #root {
@@ -6,15 +89,15 @@ html, body, #root {
 }
 
 body {
-  background: #f4ece1;
-  color: #3a2e25;
+  background: var(--c-bg);
+  color: var(--c-ink);
   font-family: 'Hanken Grotesk', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
 
-input, button {
+input, button, textarea, select {
   font-family: inherit;
 }
 
@@ -26,10 +109,24 @@ button {
   padding: 0;
 }
 
+/* Dark-skin form controls: without this the browser paints its own light
+   chrome for date/number pickers and placeholder text. */
+input, textarea, select {
+  color-scheme: inherit;
+}
+
+::placeholder { color: var(--c-faint); opacity: 1; }
+
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb {
-  background: #d8c9b6;
+  background: var(--c-scroll-thumb);
   border-radius: 6px;
   border: 3px solid transparent;
   background-clip: content-box;
+}
+
+/* The phone tab bar sits on top of the page; keep it clear of the home
+   indicator on notched devices. */
+.tend-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }

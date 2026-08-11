@@ -4,7 +4,11 @@ import { useHousehold } from '../household/HouseholdProvider';
 // Round person avatar with their initial. Member colors come from the household.
 export function Avatar({ who, size = 36 }) {
   const { peopleMap } = useHousehold();
-  const p = peopleMap[who] || { bg: '#ddd', color: '#555', initial: who ? who[0].toUpperCase() : '?' };
+  const p = peopleMap[who] || {
+    bg: colors.chipBg,
+    color: colors.muted2,
+    initial: who ? who[0].toUpperCase() : '?',
+  };
   return (
     <div
       style={{
@@ -47,7 +51,7 @@ export function Check({ done, onClick }) {
               width: 20,
               height: 20,
               borderRadius: 7,
-              border: '2px solid #e0d0bb',
+              border: `2px solid ${colors.inputBorder}`,
               background: 'transparent',
               flexShrink: 0,
             }
@@ -58,8 +62,8 @@ export function Check({ done, onClick }) {
           style={{
             width: 9,
             height: 5,
-            borderLeft: '2px solid #fff',
-            borderBottom: '2px solid #fff',
+            borderLeft: `2px solid ${colors.onAccent}`,
+            borderBottom: `2px solid ${colors.onAccent}`,
             transform: 'rotate(-45deg)',
             marginTop: -2,
           }}
@@ -69,11 +73,12 @@ export function Check({ done, onClick }) {
   );
 }
 
-// Due-date pill shown at the end of a task row.
+// Due-date pill shown at the end of a task row. The text is whatever the task
+// hook derived from its due date; only the emphasis changes here.
 export function duePillProps(t) {
   if (t.done) return { bg: 'transparent', color: tone.green, text: 'Done' };
-  if (t.dueType === 'overdue') return { bg: tone.red, color: '#fff', text: t.dueLabel };
-  if (t.dueType === 'today') return { bg: colors.chipBg, color: colors.muted2, text: 'Today' };
+  if (t.dueType === 'overdue') return { bg: tone.red, color: colors.onAccent, text: t.dueLabel };
+  if (t.dueType === 'today') return { bg: colors.selected, color: colors.ink, text: 'Today' };
   return { bg: colors.chipBg, color: colors.muted2, text: t.dueLabel };
 }
 

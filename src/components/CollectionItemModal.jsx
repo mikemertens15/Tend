@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { colors, fonts } from '../theme';
 import { useHousehold } from '../household/HouseholdProvider';
 import { ModalShell, Label, Chip, inputStyle, PrimaryButton, GhostButton, MemberPicker, DeleteButton } from './Modal';
-import { DOMAINS, optionValue, optionLabel } from '../data/collections';
+import { DOMAINS, firstStatus, optionValue, optionLabel } from '../data/collections';
 
 // Add or edit any collection item. Every input below is driven by the domain
 // spec, so a new hobby gets a working form without touching this file.
@@ -14,6 +14,10 @@ export function CollectionItemModal({ section, item, onClose, onSave, onRemove }
   const spec = DOMAINS[domain];
 
   const [title, setTitle] = useState(item?.title ?? '');
+  // Without this the form could only ever create backlog items, so "I'm
+  // already playing this" had to be a second step on the row afterwards —
+  // easy to think you'd done and not have.
+  const [status, setStatus] = useState(item?.status ?? firstStatus(domain));
   const [note, setNote] = useState(item?.note ?? '');
   // Hobbies are personal, so a new item belongs to whoever is signed in.
   const [ownerId, setOwnerId] = useState(
@@ -30,6 +34,9 @@ export function CollectionItemModal({ section, item, onClose, onSave, onRemove }
 
   function pickDomain(next) {
     setDomain(next);
+    // Lifecycles differ between domains — a movie has no "Planned" — so the
+    // status has to reset rather than carry across.
+    setStatus(firstStatus(next));
     const seed = {};
     for (const f of DOMAINS[next].fields) seed[f.key] = extras[f.key] ?? '';
     setExtras(seed);
@@ -43,7 +50,8 @@ export function CollectionItemModal({ section, item, onClose, onSave, onRemove }
     onSave({
       domain,
       title: title.trim(),
-      note: note.trim() || null,
+      status,
+      note: spec.noteLabel ? note.trim() || null : null,
       owner: members.find((m) => m.id === ownerId)?.name ?? null,
       progressCurrent: num(progressCurrent),
       progressTotal: num(progressTotal),
@@ -98,6 +106,15 @@ export function CollectionItemModal({ section, item, onClose, onSave, onRemove }
         placeholder={spec.titlePlaceholder}
         style={inputStyle}
       />
+
+      <Label>Where's it at?</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        {spec.statuses.map((s) => (
+          <Chip key={s.key} active={status === s.key} onClick={() => setStatus(s.key)}>
+            {s.short}
+          </Chip>
+        ))}
+      </div>
 
       {spec.fields.map((field) =>
         field.type === 'chips' ? (
@@ -160,14 +177,18 @@ export function CollectionItemModal({ section, item, onClose, onSave, onRemove }
       <Label>Whose is it?</Label>
       <MemberPicker value={ownerId} onChange={setOwnerId} none="Shared" />
 
-      <Label>{spec.noteLabel}</Label>
-      <textarea
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        rows={3}
-        placeholder={spec.noteLabel === 'Next step' ? 'e.g. wire up the settings screen' : 'Optional'}
-        style={{ ...inputStyle, marginBottom: 0, resize: 'vertical', font: `500 14px ${fonts.sans}` }}
-      />
+      {spec.noteLabel && (
+        <>
+          <Label>{spec.noteLabel}</Label>
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={3}
+            placeholder={spec.noteLabel === 'Next step' ? 'e.g. wire up the settings screen' : 'Optional'}
+            style={{ ...inputStyle, marginBottom: 0, resize: 'vertical', font: `500 14px ${fonts.sans}` }}
+          />
+        </>
+      )}
     </ModalShell>
   );
 }

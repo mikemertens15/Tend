@@ -104,6 +104,21 @@ export function HouseholdProvider({ children }) {
     [household, members, load],
   );
 
+  // Per-household preferences (the grocery budget, so far). Stored as one
+  // jsonb column so a new setting is a key, not a migration.
+  const settings = useMemo(() => household?.settings ?? {}, [household]);
+
+  const saveSettings = useCallback(
+    async (patch) => {
+      if (!household) return;
+      const next = { ...(household.settings ?? {}), ...patch };
+      setHousehold((h) => (h ? { ...h, settings: next } : h));
+      const { error } = await supabase.from('households').update({ settings: next }).eq('id', household.id);
+      if (error) load();
+    },
+    [household, load],
+  );
+
   const peopleMap = useMemo(() => {
     const m = {};
     for (const mem of members) {
@@ -123,6 +138,8 @@ export function HouseholdProvider({ children }) {
     loading,
     household,
     members,
+    settings,
+    saveSettings,
     peopleMap,
     order,
     currentMember,

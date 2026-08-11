@@ -2,7 +2,7 @@ import { colors, fonts } from '../theme';
 import { Card } from '../components/ui';
 import { useIsNarrow } from '../useMediaQuery';
 import { useCollection } from '../data/useCollection';
-import { DOMAINS, HOBBY_SECTIONS, ALL_HOBBY_DOMAINS } from '../data/collections';
+import { DOMAINS, HOBBY_SECTIONS, ALL_HOBBY_DOMAINS, isUnderway } from '../data/collections';
 
 // The landing pad for everything that isn't the house. One card per hobby, so
 // the top nav doesn't grow a tab every time a new interest shows up.
@@ -10,7 +10,7 @@ export function HobbiesView({ navigate }) {
   const narrow = useIsNarrow();
   const { items, loading } = useCollection(ALL_HOBBY_DOMAINS);
 
-  const active = items.filter((i) => i.status === 'active');
+  const active = items.filter(isUnderway);
 
   return (
     <div>
@@ -34,7 +34,7 @@ export function HobbiesView({ navigate }) {
       >
         {HOBBY_SECTIONS.map((section) => {
           const mine = items.filter((i) => section.domains.includes(i.domain));
-          const onTheGo = mine.filter((i) => i.status === 'active');
+          const onTheGo = mine.filter(isUnderway);
           const queued = mine.filter((i) => ['backlog', 'idea', 'planned'].includes(i.status));
 
           return (

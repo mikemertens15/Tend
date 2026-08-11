@@ -1,14 +1,16 @@
 import { useState, useEffect } from 'react';
-import { colors, fonts } from '../theme';
+import { colors, tone, shadows, fonts } from '../theme';
 import { Avatar } from '../components/ui';
 import { useHousehold } from './HouseholdProvider';
 import { useAuth } from '../auth/AuthProvider';
+import { useTheme, THEMES } from '../useTheme';
 
 // Account + household management, opened from the TopNav avatar: share the
 // invite code, see/add members, and sign out.
 export function HouseholdModal({ onClose }) {
   const { household, members, addMember, currentMember } = useHousehold();
   const { signOut, setPassword } = useAuth();
+  const { theme, setTheme } = useTheme();
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -61,7 +63,7 @@ export function HouseholdModal({ onClose }) {
         position: 'fixed',
         inset: 0,
         zIndex: 50,
-        background: 'rgba(58,46,37,.4)',
+        background: shadows.backdrop,
         backdropFilter: 'blur(3px)',
         WebkitBackdropFilter: 'blur(3px)',
         display: 'flex',
@@ -81,7 +83,7 @@ export function HouseholdModal({ onClose }) {
           background: colors.card,
           borderRadius: 22,
           padding: '28px 30px',
-          boxShadow: '0 24px 60px rgba(40,25,15,.3)',
+          boxShadow: shadows.modal,
           maxHeight: '88vh',
           overflowY: 'auto',
         }}
@@ -100,6 +102,32 @@ export function HouseholdModal({ onClose }) {
         </div>
         <div style={{ font: `400 13px ${fonts.sans}`, color: colors.muted, marginBottom: 22 }}>
           {members.length} {members.length === 1 ? 'person' : 'people'}
+        </div>
+
+        {/* Appearance */}
+        <Label>Appearance</Label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          {THEMES.map(([key, label, blurb]) => {
+            const active = theme === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setTheme(key)}
+                aria-pressed={active}
+                style={{
+                  flex: 1,
+                  padding: '12px 14px',
+                  borderRadius: 14,
+                  textAlign: 'left',
+                  background: active ? colors.chipBg : colors.inputBg,
+                  border: `1px solid ${active ? colors.selected : colors.cardBorder}`,
+                }}
+              >
+                <div style={{ font: `600 13px ${fonts.sans}`, color: colors.ink }}>{label}</div>
+                <div style={{ font: `400 11px/1.4 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>{blurb}</div>
+              </button>
+            );
+          })}
         </div>
 
         {/* Invite code */}
@@ -122,7 +150,7 @@ export function HouseholdModal({ onClose }) {
           </div>
           <button
             onClick={copyCode}
-            style={{ padding: '8px 14px', borderRadius: 18, background: colors.accent, color: '#fff', font: `600 12.5px ${fonts.sans}`, cursor: 'pointer' }}
+            style={{ padding: '8px 14px', borderRadius: 18, background: colors.accent, color: colors.onAccent, font: `600 12.5px ${fonts.sans}`, cursor: 'pointer' }}
           >
             {copied ? 'Copied!' : 'Copy'}
           </button>
@@ -156,7 +184,7 @@ export function HouseholdModal({ onClose }) {
             placeholder="e.g. Theo"
             style={{
               flex: 1,
-              border: '1px solid #e5d6c3',
+              border: `1px solid ${colors.inputBorder}`,
               background: colors.inputBg,
               borderRadius: 12,
               padding: '11px 14px',
@@ -172,7 +200,7 @@ export function HouseholdModal({ onClose }) {
               padding: '11px 18px',
               borderRadius: 12,
               background: colors.accent,
-              color: '#fff',
+              color: colors.onAccent,
               font: `600 13px ${fonts.sans}`,
               opacity: busy || !newName.trim() ? 0.6 : 1,
               cursor: busy || !newName.trim() ? 'default' : 'pointer',
@@ -200,7 +228,7 @@ export function HouseholdModal({ onClose }) {
               placeholder="New password"
               style={{
                 flex: 1,
-                border: '1px solid #e5d6c3',
+                border: `1px solid ${colors.inputBorder}`,
                 background: colors.inputBg,
                 borderRadius: 12,
                 padding: '11px 14px',
@@ -216,7 +244,7 @@ export function HouseholdModal({ onClose }) {
                 padding: '11px 18px',
                 borderRadius: 12,
                 background: colors.accent,
-                color: '#fff',
+                color: colors.onAccent,
                 font: `600 13px ${fonts.sans}`,
                 opacity: pwBusy || pw.length < 6 ? 0.6 : 1,
                 cursor: pwBusy || pw.length < 6 ? 'default' : 'pointer',
@@ -226,7 +254,7 @@ export function HouseholdModal({ onClose }) {
             </button>
           </div>
           {pwMsg && (
-            <div style={{ font: `500 12px/1.5 ${fonts.sans}`, color: pwMsg.ok ? '#5a7a63' : colors.accentDark, marginTop: 8 }}>
+            <div style={{ font: `500 12px/1.5 ${fonts.sans}`, color: pwMsg.ok ? tone.green : colors.accentDark, marginTop: 8 }}>
               {pwMsg.text}
             </div>
           )}

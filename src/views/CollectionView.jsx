@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { colors, fonts } from '../theme';
+import { colors, shadows, fonts } from '../theme';
 import { Card, Avatar, ProgressBar } from '../components/ui';
 import { useHousehold } from '../household/HouseholdProvider';
 import { useCollection } from '../data/useCollection';
 import { CollectionItemModal } from '../components/CollectionItemModal';
-import { DOMAINS, HOBBY_SECTIONS, optionValue, optionLabel } from '../data/collections';
+import { DOMAINS, HOBBY_SECTIONS, isUnderway, optionValue, optionLabel } from '../data/collections';
 
 // One view for every hobby. Everything on screen — the lifecycle tabs, the
 // status toggle, the subtitle line, whether there's a progress bar — comes
@@ -22,7 +22,9 @@ export function CollectionView({ section, navigate }) {
   const spec = DOMAINS[domain];
   const ofDomain = items.filter((i) => i.domain === domain);
   const visible = ofDomain.filter((i) => owner === 'all' || i.owner === owner);
-  const inProgress = ofDomain.filter((i) => i.status === 'active').length;
+  // Counted off `visible`, not the whole domain, so the summary line always
+  // describes the list underneath it rather than someone else's shelf.
+  const inProgress = visible.filter(isUnderway).length;
 
   const ownerChips = [['all', 'Everyone'], ...order.map((n) => [n, n])];
 
@@ -62,13 +64,13 @@ export function CollectionView({ section, navigate }) {
         <div>
           <div style={{ font: `400 30px ${fonts.serif}`, color: colors.ink }}>{section.label}</div>
           <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-            {ofDomain.length} {(ofDomain.length === 1 ? spec.noun : spec.label).toLowerCase()} ·{' '}
+            {visible.length} {(visible.length === 1 ? spec.noun : spec.label).toLowerCase()} ·{' '}
             {inProgress} in progress
           </div>
         </div>
         <button
           onClick={() => setAdding(true)}
-          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: '#fff', font: `600 13px ${fonts.sans}`, boxShadow: '0 2px 8px rgba(194,114,74,.3)' }}
+          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent }}
         >
           + Add {spec.noun.toLowerCase()}
         </button>
@@ -84,7 +86,7 @@ export function CollectionView({ section, navigate }) {
                 onClick={() => setDomain(d)}
                 style={
                   sel
-                    ? { padding: '8px 18px', borderRadius: 20, background: colors.accent, color: '#fff', font: `600 13px ${fonts.sans}` }
+                    ? { padding: '8px 18px', borderRadius: 20, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}` }
                     : { padding: '8px 18px', borderRadius: 20, background: colors.card, border: `1px solid ${colors.cardBorder}`, color: colors.muted2, font: `500 13px ${fonts.sans}` }
                 }
               >
@@ -206,7 +208,7 @@ function ItemRow({ item, spec, topBorder, onUpdate, onEdit }) {
         </div>
       )}
 
-      {item.note && (
+      {spec.noteLabel && item.note && (
         <div style={{ font: `400 12.5px/1.5 ${fonts.sans}`, color: colors.muted2, marginTop: 8 }}>
           <span style={{ color: colors.faint }}>{spec.noteLabel}: </span>
           {item.note}
@@ -231,7 +233,7 @@ function StatusControl({ spec, value, onSet }) {
               padding: '5px 11px',
               borderRadius: 18,
               background: sel ? colors.accent : 'transparent',
-              color: sel ? '#fff' : colors.muted2,
+              color: sel ? colors.onAccent : colors.muted2,
               font: `${sel ? 600 : 500} 11.5px ${fonts.sans}`,
               whiteSpace: 'nowrap',
             }}
@@ -252,7 +254,7 @@ function Stars({ value = 0, onSet }) {
           key={n}
           onClick={() => onSet(n === value ? null : n)}
           aria-label={`${n} star${n > 1 ? 's' : ''}`}
-          style={{ padding: '0 1px', fontSize: 15, lineHeight: 1, color: n <= value ? colors.accent : '#dcc9b0' }}
+          style={{ padding: '0 1px', fontSize: 15, lineHeight: 1, color: n <= value ? colors.accent : colors.starEmpty }}
         >
           ★
         </button>

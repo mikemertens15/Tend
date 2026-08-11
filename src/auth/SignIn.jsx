@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { colors, fonts } from '../theme';
+import { colors, shadows, fonts } from '../theme';
 import { useAuth } from './AuthProvider';
 
 // Sign-in screen. Email + password is the everyday path (no email round-trip);
@@ -132,9 +132,9 @@ export function SignIn() {
               padding: '13px',
               borderRadius: 22,
               background: colors.accent,
-              color: '#fff',
+              color: colors.onAccent,
               font: `600 14px ${fonts.sans}`,
-              boxShadow: '0 2px 8px rgba(194,114,74,.3)',
+              boxShadow: shadows.accent,
               opacity: canSubmit ? 1 : 0.6,
               cursor: canSubmit ? 'pointer' : 'default',
             }}
@@ -169,7 +169,7 @@ export function SignIn() {
 function inputStyle(marginBottom) {
   return {
     width: '100%',
-    border: '1px solid #e5d6c3',
+    border: `1px solid ${colors.inputBorder}`,
     background: colors.inputBg,
     borderRadius: 12,
     padding: '12px 14px',
@@ -201,7 +201,7 @@ export function Shell({ children }) {
           border: `1px solid ${colors.cardBorder}`,
           borderRadius: 22,
           padding: '34px 34px 36px',
-          boxShadow: '0 24px 60px rgba(40,25,15,.12)',
+          boxShadow: shadows.modal,
         }}
       >
         {children}

@@ -10,9 +10,12 @@
 // Spec shape:
 //   noun / label      singular and plural names
 //   titlePlaceholder  example text for the title input
-//   noteLabel         what the shared `note` column means here
+//   noteLabel         what the shared `note` column means here. null drops the
+//                     note field entirely — not every hobby has something to
+//                     write down.
 //   statuses          the lifecycle, in display order. `short` is the row
-//                     toggle, `long` the section heading.
+//                     toggle, `long` the section heading. The first entry is
+//                     where new items land.
 //   fields            extra inputs, stored in `details`. `meta: true` puts the
 //                     value in the row's subtitle line.
 //   progress          enables the progress bar and names its unit
@@ -23,7 +26,9 @@ export const DOMAINS = {
     noun: 'Game',
     label: 'Games',
     titlePlaceholder: 'e.g. Elden Ring',
-    noteLabel: 'Notes',
+    // No notes: there's never anything to say about a game that the status and
+    // the platinum flag don't already say.
+    noteLabel: null,
     // "Platinum" is deliberately its own terminal state, not a flag on
     // Finished — a platinum run is a different thing from rolling credits.
     statuses: [
@@ -42,16 +47,20 @@ export const DOMAINS = {
       },
       {
         key: 'intent',
-        label: 'Playing it for…',
+        label: 'Going for the platinum?',
         type: 'chips',
         meta: true,
+        // Stored values stay 'fun' / 'completion' from when this was a broader
+        // "playing it for…" question, so existing rows keep their answer.
         options: [
+          ['completion', 'Platinum run'],
           ['fun', 'Just playing'],
-          ['completion', 'Going for platinum'],
         ],
       },
     ],
-    progress: { label: 'Trophies', current: 'Earned', total: 'Total' },
+    // Trophy counts were more bookkeeping than they were worth — the platinum
+    // shelf and the flag above carry the whole story.
+    progress: null,
   },
 
   show: {
@@ -208,6 +217,15 @@ export const detailKeys = (domain) => (DOMAINS[domain]?.fields ?? []).map((f) =>
 
 export const statusMeta = (domain, status) =>
   DOMAINS[domain]?.statuses.find((s) => s.key === status) ?? { key: status, short: status, long: status };
+
+// Where a new item in this domain starts. Not every lifecycle opens with
+// "backlog" — a workshop project starts as an idea — and an item whose status
+// isn't in its domain's vocabulary renders in no group at all, i.e. vanishes.
+export const firstStatus = (domain) => DOMAINS[domain]?.statuses[0]?.key ?? 'backlog';
+
+// The statuses that mean "started but not finished", for the counts on the
+// hobbies landing page and the home dashboard.
+export const isUnderway = (item) => item.status === 'active';
 
 // Chip options are either a bare string or a [value, label] pair.
 export const optionValue = (opt) => (Array.isArray(opt) ? opt[0] : opt);

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { colors, tone, fonts } from '../theme';
+import { colors, tone, shadows, fonts } from '../theme';
 import { Card } from '../components/ui';
 import { SystemModal } from '../components/SystemModal';
 import { statusColor } from './HomeView';
@@ -21,7 +21,7 @@ export function SystemsView({ systems, onAdd, onUpdate, onRemove, onMarkDone }) 
         </div>
         <button
           onClick={() => setEditing('new')}
-          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: '#fff', font: `600 13px ${fonts.sans}`, boxShadow: '0 2px 8px rgba(194,114,74,.3)', whiteSpace: 'nowrap' }}
+          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent, whiteSpace: 'nowrap' }}
         >
           + Track a system
         </button>

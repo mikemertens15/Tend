@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <!-- Maskable: the platform may crop to a circle, so everything that matters
+       stays inside the middle 80% and the background bleeds to the edges. -->
+  <rect width="192" height="192" fill="#c2724a"/>
+  <circle cx="96" cy="96" r="52" fill="#f4ece1"/>
+  <text x="96" y="122" font-family="Georgia, 'Instrument Serif', serif" font-size="76" fill="#c2724a" text-anchor="middle">T</text>
+</svg>

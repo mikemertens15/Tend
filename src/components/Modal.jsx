@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { colors, fonts } from '../theme';
+import { colors, tone, shadows, fonts } from '../theme';
 import { Avatar } from './ui';
 import { useHousehold } from '../household/HouseholdProvider';
 
@@ -22,7 +22,7 @@ export function ModalShell({ title, onClose, children, footer }) {
         position: 'fixed',
         inset: 0,
         zIndex: 40,
-        background: 'rgba(58,46,37,.4)',
+        background: shadows.backdrop,
         backdropFilter: 'blur(3px)',
         WebkitBackdropFilter: 'blur(3px)',
         display: 'flex',
@@ -44,7 +44,7 @@ export function ModalShell({ title, onClose, children, footer }) {
           background: colors.card,
           borderRadius: 22,
           padding: '28px 30px',
-          boxShadow: '0 24px 60px rgba(40,25,15,.3)',
+          boxShadow: shadows.modal,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
@@ -76,7 +76,7 @@ export function Chip({ active, onClick, children }) {
       onClick={onClick}
       style={
         active
-          ? { padding: '9px 15px', borderRadius: 12, background: colors.accent, color: '#fff', font: `600 12.5px ${fonts.sans}` }
+          ? { padding: '9px 15px', borderRadius: 12, background: colors.accent, color: colors.onAccent, font: `600 12.5px ${fonts.sans}` }
           : { padding: '9px 15px', borderRadius: 12, background: colors.inputBg, border: `1px solid ${colors.cardBorder}`, color: colors.muted2, font: `500 12.5px ${fonts.sans}` }
       }
     >
@@ -87,7 +87,7 @@ export function Chip({ active, onClick, children }) {
 
 export const inputStyle = {
   width: '100%',
-  border: '1px solid #e5d6c3',
+  border: `1px solid ${colors.inputBorder}`,
   background: colors.inputBg,
   borderRadius: 12,
   padding: '12px 14px',
@@ -102,7 +102,7 @@ export function PrimaryButton({ onClick, children }) {
   return (
     <button
       onClick={onClick}
-      style={{ padding: '11px 22px', borderRadius: 22, background: colors.accent, color: '#fff', font: `600 13px ${fonts.sans}`, boxShadow: '0 2px 8px rgba(194,114,74,.3)' }}
+      style={{ padding: '11px 22px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent }}
     >
       {children}
     </button>
@@ -138,7 +138,7 @@ export function MemberPicker({ value, onChange, none }) {
         minWidth: 64,
         flex: '1 0 auto',
         background: selected ? colors.chipBg : 'transparent',
-        border: `1px solid ${selected ? '#e2b07f' : 'transparent'}`,
+        border: `1px solid ${selected ? colors.selected : 'transparent'}`,
       }}
     >
       {avatar}
@@ -178,7 +178,7 @@ export function DeleteButton({ onClick, children }) {
   return (
     <button
       onClick={onClick}
-      style={{ padding: '11px 4px', borderRadius: 22, font: `600 13px ${fonts.sans}`, color: '#c0654b', marginRight: 'auto' }}
+      style={{ padding: '11px 4px', borderRadius: 22, font: `600 13px ${fonts.sans}`, color: tone.red, marginRight: 'auto' }}
     >
       {children}
     </button>

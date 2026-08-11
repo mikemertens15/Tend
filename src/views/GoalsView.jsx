@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { colors, fonts } from '../theme';
+import { colors, tone, shadows, fonts } from '../theme';
 import { Card, Avatar } from '../components/ui';
 import { GoalModal } from '../components/GoalModal';
 import { targetTone } from '../data/useGoals';
@@ -23,7 +23,7 @@ export function GoalsView({ active, done, onAdd, onUpdate, onRemove, onMarkDone,
         </div>
         <button
           onClick={() => setEditing('new')}
-          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: '#fff', font: `600 13px ${fonts.sans}`, boxShadow: '0 2px 8px rgba(194,114,74,.3)', whiteSpace: 'nowrap' }}
+          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent, whiteSpace: 'nowrap' }}
         >
           + Add goal
         </button>
@@ -86,7 +86,7 @@ export function GoalsView({ active, done, onAdd, onUpdate, onRemove, onMarkDone,
               <Card style={{ padding: '8px 22px' }}>
                 {done.map((g, i) => (
                   <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderTop: i > 0 ? `1px solid ${colors.divider}` : 'none' }}>
-                    <span style={{ color: '#7f9b86', fontSize: 15 }}>✓</span>
+                    <span style={{ color: tone.green, fontSize: 15 }}>✓</span>
                     <div style={{ flex: 1, font: `500 13.5px ${fonts.sans}`, color: colors.muted2, textDecoration: 'line-through' }}>
                       {g.title}
                     </div>

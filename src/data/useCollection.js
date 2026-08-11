@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useHousehold } from '../household/HouseholdProvider';
-import { detailKeys } from './collections';
+import { detailKeys, firstStatus } from './collections';
 
 // One store for every collection-shaped hobby. Pass the domains a view cares
 // about — useCollection(['show', 'movie']) — and it fetches, subscribes and
@@ -117,7 +117,10 @@ export function useCollection(domains) {
       const { error } = await supabase.from('collection_items').insert({
         household_id: householdId,
         domain,
-        status: 'backlog',
+        // Fallback only — the form sends a status. Hardcoding 'backlog' here
+        // used to make new workshop projects and builds invisible: neither
+        // lifecycle has a 'backlog' step, so the row matched no group.
+        status: firstStatus(domain),
         ...row,
         title: (row.title || '').trim() || 'Untitled',
         details,

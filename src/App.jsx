@@ -2,14 +2,14 @@ import { useState, useMemo } from 'react';
 import { colors, fonts } from './theme';
 import { getWeek } from './dates';
 import { useHashRoute } from './useHashRoute';
+import { useIsPhone } from './useMediaQuery';
 import { useTasks } from './data/useTasks';
 import { useVehicles } from './data/useVehicles';
 import { useSystems } from './data/useSystems';
 import { useMeals } from './data/useMeals';
-import { useGroceries } from './data/useGroceries';
-import { useWorkouts } from './data/useWorkouts';
 import { useGoals } from './data/useGoals';
 import { TopNav } from './components/TopNav';
+import { MobileNav } from './components/MobileNav';
 import { AddTaskModal } from './components/AddTaskModal';
 import { HomeView } from './views/HomeView';
 import { ChoresView } from './views/ChoresView';
@@ -21,8 +21,10 @@ import { CollectionView } from './views/CollectionView';
 import { sectionByKey } from './data/collections';
 import { MealsView } from './views/MealsView';
 import { GroceriesView } from './views/GroceriesView';
-import { FitnessView } from './views/FitnessView';
+import { PetsView } from './views/PetsView';
+import { HouseFactsView } from './views/HouseFactsView';
 import { GoalsView } from './views/GoalsView';
+import { ReleasesView } from './views/ReleasesView';
 import { useAuth } from './auth/AuthProvider';
 import { useHousehold } from './household/HouseholdProvider';
 import { SignIn } from './auth/SignIn';
@@ -48,14 +50,17 @@ function Dashboard() {
   // Routing lives in the URL hash, so views deep-link, the back button works,
   // and a refresh stays where you were.
   const [view, navigate] = useHashRoute('home');
+  const phone = useIsPhone();
   const [modalOpen, setModalOpen] = useState(false);
   const [householdOpen, setHouseholdOpen] = useState(false);
+
+  // Only the hooks Home actually summarises live up here. Sections that stand
+  // alone — groceries, pets, facts, hobbies — own their data, so opening the
+  // app doesn't fetch and subscribe to every table in the database.
   const { tasks, toggle, addTask } = useTasks();
   const { vehicles, addVehicle, updateVehicle, removeVehicle } = useVehicles();
   const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems();
   const { mealsByKey, setMeal, removeMeal } = useMeals();
-  const groceries = useGroceries();
-  const { workouts, addWorkout, removeWorkout } = useWorkouts();
   const goals = useGoals();
 
   // Computed once per mount — the real current week drives greeting + calendar.
@@ -75,7 +80,15 @@ function Dashboard() {
         onOpenHousehold={() => setHouseholdOpen(true)}
       />
 
-      <main style={{ maxWidth: 1180, margin: '0 auto', padding: '30px 36px 70px' }}>
+      <main
+        style={{
+          maxWidth: 1180,
+          margin: '0 auto',
+          // Extra room at the bottom on phones so the tab bar never covers the
+          // last row of a list.
+          padding: phone ? '20px 18px 110px' : '30px 36px 70px',
+        }}
+      >
         {/* Keyed so switching sections remounts: the view holds per-section
             state (selected domain, owner filter) that must not carry over. */}
         {hobbySection && (
@@ -109,16 +122,10 @@ function Dashboard() {
         )}
         {view === 'calendar' && <CalendarView tasks={tasks} week={week} />}
         {view === 'meals' && <MealsView mealsByKey={mealsByKey} setMeal={setMeal} removeMeal={removeMeal} />}
-        {view === 'groceries' && (
-          <GroceriesView
-            items={groceries.items}
-            onAdd={groceries.addItem}
-            onToggle={groceries.toggle}
-            onRemove={groceries.removeItem}
-            onClearDone={groceries.clearDone}
-          />
-        )}
-        {view === 'fitness' && <FitnessView workouts={workouts} onAdd={addWorkout} onRemove={removeWorkout} />}
+        {view === 'groceries' && <GroceriesView />}
+        {view === 'pets' && <PetsView />}
+        {view === 'facts' && <HouseFactsView />}
+        {view === 'releases' && <ReleasesView />}
         {view === 'goals' && (
           <GoalsView
             active={goals.active}
@@ -131,6 +138,8 @@ function Dashboard() {
           />
         )}
       </main>
+
+      {phone && <MobileNav view={view} setView={navigate} hobbyRoute={Boolean(hobbySection)} />}
 
       {modalOpen && <AddTaskModal onClose={() => setModalOpen(false)} onAdd={addTask} />}
       {householdOpen && <HouseholdModal onClose={() => setHouseholdOpen(false)} />}

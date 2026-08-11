@@ -67,7 +67,7 @@ export function MealsView({ mealsByKey, setMeal, removeMeal }) {
                   height: 46,
                   borderRadius: 13,
                   background: isToday ? colors.accent : colors.chipBg,
-                  color: isToday ? '#fff' : colors.muted3,
+                  color: isToday ? colors.onAccent : colors.muted3,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',

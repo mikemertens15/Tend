@@ -1,0 +1,90 @@
+// The release log. Hand-written on purpose: a generated changelog lists
+// commits, and what you actually want to read six months later is what
+// changed about *using* the thing.
+//
+// Adding a release: bump `version` in package.json to match the top entry
+// here, and write the notes in the same voice — what you can now do, not what
+// was refactored to allow it.
+
+export const RELEASES = [
+  {
+    version: '0.7.0',
+    date: '2026-08-11',
+    name: 'Pets, prices and a dark room',
+    notes: [
+      ['added', 'Pets — feeding checklists for each cat, litter and care countdowns, vet visits and weights.'],
+      ['added', 'Groceries grew a budget: prices per item, your stores, aisle grouping, and a finished trip that files against a weekly or monthly target.'],
+      ['added', 'Price memory — Tend remembers what you last paid for something and where, and fills it in next time.'],
+      ['added', 'Recurring chores. Check off "trash night" and the next one books itself.'],
+      ['added', 'House facts — filter sizes, paint colours, model numbers, the wifi password.'],
+      ['added', 'A dark wall-display skin, and Tend now installs to a phone or tablet home screen.'],
+      ['added', 'This release log, and the version chip that opens it.'],
+      ['changed', 'Games lost their notes field and trophy counters. A game is now backlog, playing, finished or platinum — plus whether you\'re going for it.'],
+      ['fixed', 'Adding a game left it in the backlog with no way to say you were already playing it, so the "in progress" count read 0. The form asks now.'],
+      ['fixed', 'New workshop projects and builds landed with a status their lists didn\'t have, so they never appeared at all.'],
+      ['removed', 'Fitness. A dedicated app already does it better, and a half-used section is worse than no section.'],
+    ],
+  },
+  {
+    version: '0.6.0',
+    date: '2026-08-02',
+    name: 'Hobbies on one spine',
+    notes: [
+      ['added', 'Hobbies: games, shows, movies, books, workshop projects and side builds, all behind one landing page.'],
+      ['changed', 'Every hobby now runs on one shared table and one shared view, described by a spec file. Picking up a new hobby is a few lines, not a new feature.'],
+    ],
+  },
+  {
+    version: '0.5.0',
+    date: '2026-07-03',
+    name: 'The shared list',
+    notes: [['added', 'A grocery list the whole household edits at once, syncing live between phones.']],
+  },
+  {
+    version: '0.4.0',
+    date: '2026-07-03',
+    name: 'Just let me in',
+    notes: [
+      ['added', 'Password sign-in, so coming back doesn\'t mean waiting on an email.'],
+      ['added', 'Password reset, and somewhere to change it later.'],
+    ],
+  },
+  {
+    version: '0.3.0',
+    date: '2026-07-03',
+    name: 'Life beyond the house',
+    notes: [
+      ['added', 'Meals — plan the week\'s dinners and who\'s cooking.'],
+      ['added', 'Goals — the bigger things, with a target date.'],
+      ['added', 'A watchlist for shows and films, later folded into Hobbies.'],
+    ],
+  },
+  {
+    version: '0.2.0',
+    date: '2026-06-27',
+    name: 'A real backend',
+    notes: [
+      ['added', 'Accounts and households: create one, share the join code, everyone sees the same data.'],
+      ['added', 'Live sync — check a chore off on your phone and it\'s checked on the tablet.'],
+      ['changed', 'Vehicles and home systems moved out of demo data and into the database.'],
+    ],
+  },
+  {
+    version: '0.1.0',
+    date: '2026-06-27',
+    name: 'First light',
+    notes: [
+      ['added', 'Home, Chores, Vehicles, Systems and Calendar, built from the "Warm & homey" design direction.'],
+      ['added', 'Everything stored in the browser, which was enough to find out whether the idea held up.'],
+    ],
+  },
+];
+
+export const CURRENT = RELEASES[0];
+
+// Build stamps injected by vite.config.js.
+export const BUILD = {
+  version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : CURRENT.version,
+  commit: typeof __APP_COMMIT__ === 'string' ? __APP_COMMIT__ : 'dev',
+  builtAt: typeof __APP_BUILT_AT__ === 'string' ? __APP_BUILT_AT__ : null,
+};

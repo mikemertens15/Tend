@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { colors, fonts } from '../theme';
-import { Avatar } from './ui';
+import { ModalShell, Label, Chip, inputStyle, PrimaryButton, GhostButton, MemberPicker } from './Modal';
 import { useHousehold } from '../household/HouseholdProvider';
+import { REPEATS } from '../data/useTasks';
+import { dayStr, addDays, parseDay, shortDay } from '../dates';
 
 const CATS = [
   ['chore', 'Chore'],
@@ -9,151 +11,104 @@ const CATS = [
   ['system', 'Home system'],
 ];
 
+// Rebuilt on ModalShell (it used to hand-roll its own backdrop and chrome) so
+// it picks up Escape-to-close and both skins for free.
 export function AddTaskModal({ onClose, onAdd }) {
-  const { order, currentMember } = useHousehold();
+  const { members, currentMember } = useHousehold();
   const [title, setTitle] = useState('');
   const [cat, setCat] = useState('chore');
-  const [who, setWho] = useState(currentMember?.name || order[0] || '');
-  const inputRef = useRef(null);
+  const [assigneeId, setAssigneeId] = useState(currentMember?.id ?? null);
+  const [dueOn, setDueOn] = useState(dayStr());
+  const [repeatDays, setRepeatDays] = useState(null);
+  const [note, setNote] = useState('');
 
-  useEffect(() => {
-    inputRef.current?.focus();
-    const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  // Quick dates cover nearly every real answer to "when?", with the date input
+  // underneath for the rest.
+  const quick = [
+    ['Today', dayStr()],
+    ['Tomorrow', addDays(dayStr(), 1)],
+    [shortDay(parseDay(addDays(dayStr(), 2))), addDays(dayStr(), 2)],
+    ['Next week', addDays(dayStr(), 7)],
+  ];
 
   function submit() {
-    onAdd({ title, cat, who });
+    if (!title.trim()) return;
+    onAdd({
+      title,
+      cat,
+      who: members.find((m) => m.id === assigneeId)?.name ?? null,
+      note,
+      dueOn,
+      repeatDays,
+    });
     onClose();
   }
 
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        zIndex: 40,
-        background: 'rgba(58,46,37,.4)',
-        backdropFilter: 'blur(3px)',
-        WebkitBackdropFilter: 'blur(3px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 24,
-      }}
+    <ModalShell
+      title="Add a task"
+      onClose={onClose}
+      footer={
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 10 }}>
+          <GhostButton onClick={onClose}>Cancel</GhostButton>
+          <PrimaryButton onClick={submit}>Add task</PrimaryButton>
+        </div>
+      }
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Add a task"
-        style={{
-          width: 460,
-          maxWidth: '100%',
-          background: colors.card,
-          borderRadius: 22,
-          padding: '28px 30px',
-          boxShadow: '0 24px 60px rgba(40,25,15,.3)',
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-          <div style={{ font: `400 25px ${fonts.serif}`, color: colors.ink }}>Add a task</div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            style={{ width: 30, height: 30, borderRadius: '50%', background: colors.chipBg, color: colors.muted2, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17 }}
-          >
-            ×
-          </button>
-        </div>
+      <Label>What needs doing?</Label>
+      <input
+        autoFocus
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && submit()}
+        placeholder="e.g. Clean out the garage"
+        style={inputStyle}
+      />
 
-        <Label>What needs doing?</Label>
-        <input
-          ref={inputRef}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && submit()}
-          placeholder="e.g. Clean out the garage"
-          style={{
-            width: '100%',
-            border: '1px solid #e5d6c3',
-            background: colors.inputBg,
-            borderRadius: 12,
-            padding: '12px 14px',
-            font: `500 14px ${fonts.sans}`,
-            color: colors.ink,
-            outline: 'none',
-            marginBottom: 20,
-          }}
-        />
-
-        <Label>Category</Label>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
-          {CATS.map(([key, label]) => {
-            const active = cat === key;
-            return (
-              <button
-                key={key}
-                onClick={() => setCat(key)}
-                style={
-                  active
-                    ? { padding: '9px 15px', borderRadius: 12, background: colors.accent, color: '#fff', font: `600 12.5px ${fonts.sans}` }
-                    : { padding: '9px 15px', borderRadius: 12, background: colors.inputBg, border: `1px solid ${colors.cardBorder}`, color: colors.muted2, font: `500 12.5px ${fonts.sans}` }
-                }
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
-        <Label>Assign to</Label>
-        <div style={{ display: 'flex', gap: 10, marginBottom: 26 }}>
-          {order.map((name) => {
-            const sel = who === name;
-            return (
-              <button
-                key={name}
-                onClick={() => setWho(name)}
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 6,
-                  padding: '8px 6px',
-                  borderRadius: 14,
-                  flex: 1,
-                  background: sel ? colors.chipBg : 'transparent',
-                  border: `1px solid ${sel ? '#e2b07f' : 'transparent'}`,
-                }}
-              >
-                <Avatar who={name} size={40} />
-                <div style={{ font: `500 11px ${fonts.sans}`, color: colors.muted3 }}>{name}</div>
-              </button>
-            );
-          })}
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button onClick={onClose} style={{ padding: '11px 20px', borderRadius: 22, font: `600 13px ${fonts.sans}`, color: colors.muted2 }}>
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            style={{ padding: '11px 22px', borderRadius: 22, background: colors.accent, color: '#fff', font: `600 13px ${fonts.sans}`, boxShadow: '0 2px 8px rgba(194,114,74,.3)' }}
-          >
-            Add to this week
-          </button>
-        </div>
+      <Label>Category</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        {CATS.map(([key, label]) => (
+          <Chip key={key} active={cat === key} onClick={() => setCat(key)}>
+            {label}
+          </Chip>
+        ))}
       </div>
-    </div>
-  );
-}
 
-function Label({ children }) {
-  return <div style={{ font: `600 12px ${fonts.sans}`, color: colors.muted2, marginBottom: 8 }}>{children}</div>;
+      <Label>When?</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        {quick.map(([label, value]) => (
+          <Chip key={label} active={dueOn === value} onClick={() => setDueOn(value)}>
+            {label}
+          </Chip>
+        ))}
+      </div>
+      <input type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} style={inputStyle} />
+
+      <Label>Repeat</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        {REPEATS.map(([days, label]) => (
+          <Chip key={label} active={repeatDays === days} onClick={() => setRepeatDays(days)}>
+            {label}
+          </Chip>
+        ))}
+      </div>
+      {repeatDays !== null && (
+        <div style={{ font: `400 12px/1.5 ${fonts.sans}`, color: colors.muted, marginBottom: 20 }}>
+          Checking this off books the next one automatically.
+        </div>
+      )}
+
+      <Label>Assign to</Label>
+      <MemberPicker value={assigneeId} onChange={setAssigneeId} none="Anyone" />
+
+      <Label>Note</Label>
+      <input
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && submit()}
+        placeholder="Optional"
+        style={{ ...inputStyle, marginBottom: 0 }}
+      />
+    </ModalShell>
+  );
 }

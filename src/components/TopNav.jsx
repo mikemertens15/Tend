@@ -1,38 +1,14 @@
-import { colors, fonts } from '../theme';
+import { colors, shadows, fonts } from '../theme';
 import { Avatar } from './ui';
 import { useHousehold } from '../household/HouseholdProvider';
-
-// Grouped navigation. Home is the always-first landing pad; the rest cluster
-// into the "Household" (home-maintenance) and "Life" domains so the app can grow
-// past the home dashboard without crowding a flat tab bar.
-//
-// Hobbies is a single entry on purpose: individual hobbies live behind its
-// landing page, so picking up a new one never adds a tab here.
-const NAV_GROUPS = [
-  { label: null, items: [['home', 'Home']] },
-  {
-    label: 'Household',
-    items: [
-      ['chores', 'Chores'],
-      ['meals', 'Meals'],
-      ['groceries', 'Groceries'],
-      ['vehicles', 'Vehicles'],
-      ['systems', 'Systems'],
-      ['calendar', 'Calendar'],
-    ],
-  },
-  {
-    label: 'Life',
-    items: [
-      ['hobbies', 'Hobbies'],
-      ['fitness', 'Fitness'],
-      ['goals', 'Goals'],
-    ],
-  },
-];
+import { useIsPhone } from '../useMediaQuery';
+import { NAV_GROUPS } from '../nav';
+import { BUILD } from '../data/releases';
 
 export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
   const { currentMember } = useHousehold();
+  const phone = useIsPhone();
+
   return (
     <div
       style={{
@@ -43,7 +19,7 @@ export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 16,
-        padding: '16px 36px',
+        padding: phone ? '12px 18px' : '16px 36px',
         background: colors.navBar,
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)',
@@ -54,80 +30,105 @@ export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
           <div style={{ width: 28, height: 28, borderRadius: '50%', background: colors.accent }} />
           <div style={{ font: `400 25px ${fonts.serif}`, color: colors.ink, lineHeight: 1 }}>Tend</div>
+          {/* Small, quiet, clickable — the release log behind it is the point. */}
+          <button
+            onClick={() => setView('releases')}
+            title="What's new"
+            aria-label={`Version ${BUILD.version} — what's new`}
+            style={{
+              padding: '3px 8px',
+              borderRadius: 20,
+              background: view === 'releases' ? colors.accent : colors.chipBg,
+              color: view === 'releases' ? colors.onAccent : colors.muted2,
+              font: `700 10px ${fonts.mono}`,
+              lineHeight: 1.4,
+              flexShrink: 0,
+            }}
+          >
+            v{BUILD.version}
+          </button>
         </div>
-        <nav
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            overflowX: 'auto',
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
-        >
-          {NAV_GROUPS.map((group, gi) => (
-            <div key={group.label ?? 'home'} style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-              {gi > 0 && (
-                <span
-                  aria-hidden="true"
-                  style={{ width: 1, height: 18, background: colors.cardBorder, margin: '0 8px', flexShrink: 0 }}
-                />
-              )}
-              {group.label && (
-                <span
-                  style={{
-                    font: `600 9.5px ${fonts.sans}`,
-                    letterSpacing: '.06em',
-                    textTransform: 'uppercase',
-                    color: colors.faint,
-                    marginRight: 2,
-                    flexShrink: 0,
-                  }}
-                >
-                  {group.label}
-                </span>
-              )}
-              {group.items.map(([key, label]) => {
-                // Keep Hobbies lit while you're inside one of its sections.
-                const active = view === key || (key === 'hobbies' && hobbyRoute);
-                return (
-                  <button
-                    key={key}
-                    onClick={() => setView(key)}
+
+        {/* On a phone this collapses and the bottom tab bar takes over. */}
+        {!phone && (
+          <nav
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
+              overflowX: 'auto',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+          >
+            {NAV_GROUPS.map((group, gi) => (
+              <div key={group.label ?? 'home'} style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                {gi > 0 && (
+                  <span
+                    aria-hidden="true"
+                    style={{ width: 1, height: 18, background: colors.cardBorder, margin: '0 8px', flexShrink: 0 }}
+                  />
+                )}
+                {group.label && (
+                  <span
                     style={{
-                      padding: '8px 15px',
-                      borderRadius: 22,
-                      whiteSpace: 'nowrap',
-                      background: active ? colors.chipBg : 'transparent',
-                      color: active ? colors.ink : colors.muted2,
-                      font: `${active ? 600 : 500} 13.5px ${fonts.sans}`,
+                      font: `600 9.5px ${fonts.sans}`,
+                      letterSpacing: '.06em',
+                      textTransform: 'uppercase',
+                      color: colors.faint,
+                      marginRight: 2,
+                      flexShrink: 0,
                     }}
                   >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
+                    {group.label}
+                  </span>
+                )}
+                {group.items.map(([key, label]) => {
+                  // Keep Hobbies lit while you're inside one of its sections.
+                  const active = view === key || (key === 'hobbies' && hobbyRoute);
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => setView(key)}
+                      aria-current={active ? 'page' : undefined}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 22,
+                        whiteSpace: 'nowrap',
+                        background: active ? colors.chipBg : 'transparent',
+                        color: active ? colors.ink : colors.muted2,
+                        font: `${active ? 600 : 500} 13.5px ${fonts.sans}`,
+                      }}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </nav>
+        )}
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: phone ? 10 : 14, flexShrink: 0 }}>
         <button
           onClick={onAdd}
+          aria-label="Add a task"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 7,
-            padding: '9px 17px',
+            padding: phone ? '8px 13px' : '9px 17px',
             borderRadius: 22,
             background: colors.accent,
-            color: '#fff',
+            color: colors.onAccent,
             font: `600 13px ${fonts.sans}`,
-            boxShadow: '0 2px 8px rgba(194,114,74,.3)',
+            boxShadow: shadows.accent,
+            whiteSpace: 'nowrap',
           }}
         >
-          <span style={{ fontSize: 16, lineHeight: 1, marginTop: -1 }}>+</span> Add task
+          <span style={{ fontSize: 16, lineHeight: 1, marginTop: -1 }}>+</span>
+          {!phone && 'Add task'}
         </button>
         <button
           onClick={onOpenHousehold}
@@ -135,7 +136,7 @@ export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
           title="Household & account"
           style={{ borderRadius: '50%', padding: 0, lineHeight: 0, cursor: 'pointer' }}
         >
-          <Avatar who={currentMember?.name} size={36} />
+          <Avatar who={currentMember?.name} size={phone ? 32 : 36} />
         </button>
       </div>
     </div>

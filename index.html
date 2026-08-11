@@ -3,18 +3,44 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#c2724a" />
+    <meta name="theme-color" content="#f4ece1" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Tend" />
-    <meta name="description" content="Tend — keep your home, chores, vehicles and systems on track." />
+    <meta name="description" content="Tend — chores, meals, groceries, pets, vehicles and everything else that keeps a household running." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=Space+Mono:wght@400;700&display=swap"
       rel="stylesheet"
     />
-    <title>Tend · Home maintenance</title>
+    <title>Tend</title>
+    <script>
+      // Pick the skin before first paint, so the app never flashes the wrong
+      // one. Mirrors resolveTheme() in src/useTheme.js — a stored choice wins,
+      // otherwise follow the OS.
+      (function () {
+        var t = 'light';
+        try {
+          var saved = localStorage.getItem('tend.theme');
+          t =
+            saved === 'light' || saved === 'dark'
+              ? saved
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+        } catch (e) {
+          /* no localStorage (private mode) — stay light */
+        }
+        document.documentElement.dataset.theme = t;
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.setAttribute('content', t === 'dark' ? '#17120f' : '#f4ece1');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

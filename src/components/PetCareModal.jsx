@@ -1,21 +1,23 @@
 import { useState } from 'react';
 import { ModalShell, Label, Chip, inputStyle, PrimaryButton, GhostButton, DeleteButton } from './Modal';
-import { HOME_CADENCES } from '../data/cadence';
+import { PET_CADENCES } from '../data/cadence';
 import { dayStr } from '../dates';
 
-// Add or edit a recurring home-upkeep item. Pass `system` (the raw DB row) to
-// edit; omit it to add. onSave receives DB-column-shaped fields.
-export function SystemModal({ system, onClose, onSave, onDelete }) {
-  const editing = Boolean(system);
-  const presetDays = HOME_CADENCES.map(([d]) => d);
+// A recurring pet job. Same shape as a home system, different vocabulary —
+// plus a pet picker, because the litter box belongs to everyone and the
+// thyroid pill belongs to one cat.
+export function PetCareModal({ job, pets, onClose, onSave, onDelete }) {
+  const editing = Boolean(job);
+  const presetDays = PET_CADENCES.map(([d]) => d);
 
-  const [name, setName] = useState(system?.name ?? '');
-  const [interval, setInterval] = useState(system?.interval_days ?? 90);
+  const [name, setName] = useState(job?.name ?? '');
+  const [petId, setPetId] = useState(job?.pet_id ?? null);
+  const [interval, setInterval] = useState(job?.interval_days ?? 1);
   const [customDays, setCustomDays] = useState(
-    system && !presetDays.includes(system.interval_days) ? String(system.interval_days) : '',
+    job && !presetDays.includes(job.interval_days) ? String(job.interval_days) : '',
   );
-  const [lastDone, setLastDone] = useState(system?.last_done_on ?? dayStr());
-  const [note, setNote] = useState(system?.note ?? '');
+  const [lastDone, setLastDone] = useState(job?.last_done_on ?? dayStr());
+  const [note, setNote] = useState(job?.note ?? '');
 
   const custom = customDays !== '';
 
@@ -25,6 +27,7 @@ export function SystemModal({ system, onClose, onSave, onDelete }) {
     if (!days || days < 1) return;
     onSave({
       name: name.trim(),
+      pet_id: petId,
       interval_days: days,
       last_done_on: lastDone || null,
       note: note.trim() || null,
@@ -34,29 +37,50 @@ export function SystemModal({ system, onClose, onSave, onDelete }) {
 
   return (
     <ModalShell
-      title={editing ? 'Edit home system' : 'Track a home system'}
+      title={editing ? 'Edit care job' : 'Add a care job'}
       onClose={onClose}
       footer={
         <>
-          {editing && <DeleteButton onClick={() => { onDelete(system.id); onClose(); }}>Remove</DeleteButton>}
+          {editing && (
+            <DeleteButton
+              onClick={() => {
+                onDelete(job.id);
+                onClose();
+              }}
+            >
+              Remove
+            </DeleteButton>
+          )}
           <GhostButton onClick={onClose}>Cancel</GhostButton>
           <PrimaryButton onClick={submit}>{editing ? 'Save changes' : 'Start tracking'}</PrimaryButton>
         </>
       }
     >
-      <Label>What needs regular attention?</Label>
+      <Label>What needs doing regularly?</Label>
       <input
         autoFocus
         value={name}
         onChange={(e) => setName(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && submit()}
-        placeholder="e.g. HVAC filter"
+        placeholder="e.g. Scoop the litter box"
         style={inputStyle}
       />
 
+      <Label>Who's it for?</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <Chip active={petId === null} onClick={() => setPetId(null)}>
+          🏡 Everyone
+        </Chip>
+        {pets.map((p) => (
+          <Chip key={p.id} active={petId === p.id} onClick={() => setPetId(p.id)}>
+            {p.emoji} {p.name}
+          </Chip>
+        ))}
+      </div>
+
       <Label>How often?</Label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-        {HOME_CADENCES.map(([days, label]) => (
+        {PET_CADENCES.map(([days, label]) => (
           <Chip
             key={days}
             active={!custom && interval === days}
@@ -86,8 +110,8 @@ export function SystemModal({ system, onClose, onSave, onDelete }) {
         value={note}
         onChange={(e) => setNote(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && submit()}
-        placeholder="e.g. Filters are in the hall closet"
-        style={inputStyle}
+        placeholder="e.g. Litter's under the basement stairs"
+        style={{ ...inputStyle, marginBottom: 0 }}
       />
     </ModalShell>
   );

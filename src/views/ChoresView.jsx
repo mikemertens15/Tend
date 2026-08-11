@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { colors, fonts, catLabel } from '../theme';
+import { colors, shadows, fonts, catLabel } from '../theme';
 import { Card } from '../components/ui';
 import { TaskRow } from '../components/TaskRow';
 import { useHousehold } from '../household/HouseholdProvider';
@@ -9,7 +9,10 @@ export function ChoresView({ tasks, onToggle, onAdd }) {
   const { order } = useHousehold();
 
   const chores = tasks.filter((t) => t.cat === 'chore');
-  const visible = chores.filter((t) => filter === 'all' || t.who === filter);
+  const visible = chores
+    .filter((t) => filter === 'all' || t.who === filter)
+    // Open work first, most overdue at the top; finished chores sink.
+    .sort((a, b) => Number(a.done) - Number(b.done) || a.daysLeft - b.daysLeft);
   const done = chores.filter((t) => t.done).length;
 
   const chips = [['all', 'Everyone'], ...order.map((n) => [n, n])];
@@ -20,12 +23,12 @@ export function ChoresView({ tasks, onToggle, onAdd }) {
         <div>
           <div style={{ font: `400 30px ${fonts.serif}`, color: colors.ink }}>Chores</div>
           <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-            {done} of {chores.length} chores done this week
+            {done} of {chores.length} chores done
           </div>
         </div>
         <button
           onClick={onAdd}
-          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: '#fff', font: `600 13px ${fonts.sans}`, boxShadow: '0 2px 8px rgba(194,114,74,.3)' }}
+          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent }}
         >
           + Add chore
         </button>
@@ -40,7 +43,7 @@ export function ChoresView({ tasks, onToggle, onAdd }) {
               onClick={() => setFilter(key)}
               style={
                 active
-                  ? { padding: '7px 15px', borderRadius: 20, background: colors.accent, color: '#fff', font: `600 12.5px ${fonts.sans}` }
+                  ? { padding: '7px 15px', borderRadius: 20, background: colors.accent, color: colors.onAccent, font: `600 12.5px ${fonts.sans}` }
                   : { padding: '7px 15px', borderRadius: 20, background: colors.card, border: `1px solid ${colors.cardBorder}`, color: colors.muted2, font: `500 12.5px ${fonts.sans}` }
               }
             >
@@ -61,7 +64,7 @@ export function ChoresView({ tasks, onToggle, onAdd }) {
               key={t.id}
               task={t}
               showAvatar
-              subtitle={`${catLabel[t.cat]} · ${t.who}`}
+              subtitle={[catLabel[t.cat], t.who ?? 'Anyone', t.repeatLabel].filter(Boolean).join(' · ')}
               onToggle={onToggle}
               pad={15}
             />

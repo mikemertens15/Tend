@@ -1,18 +1,20 @@
-import { colors, tone, fonts, catLabel } from '../theme';
+import { colors, tone, heroGradient, fonts, catLabel } from '../theme';
 import { greeting, longDate, shortDate, dayStr } from '../dates';
 import { Avatar, Card, Pill, Check, ProgressBar } from '../components/ui';
 import { useIsNarrow } from '../useMediaQuery';
 import { useHousehold } from '../household/HouseholdProvider';
 import { useCollection } from '../data/useCollection';
-import { DOMAINS, ALL_HOBBY_DOMAINS } from '../data/collections';
+import { DOMAINS, ALL_HOBBY_DOMAINS, isUnderway } from '../data/collections';
 import { targetTone } from '../data/useGoals';
-
-const DUE_RANK = { overdue: 0, today: 1, soon: 2 };
+import { usePets } from '../data/usePets';
 
 export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = [], week, onToggle, navigate }) {
   const narrow = useIsNarrow();
   const { order, currentMember } = useHousehold();
   const { items: hobbies } = useCollection(ALL_HOBBY_DOMAINS);
+  // Only Home and the Pets section load this, so the rest of the app doesn't
+  // pay for three tables it isn't showing.
+  const pets = usePets();
   const greetingName = currentMember?.name || 'there';
   const today = week.days[week.todayIndex].date;
 
@@ -22,7 +24,7 @@ export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = []
 
   const upNext = tasks
     .filter((t) => !t.done)
-    .sort((a, b) => DUE_RANK[a.dueType] - DUE_RANK[b.dueType])
+    .sort((a, b) => a.daysLeft - b.daysLeft)
     .slice(0, 6);
 
   const family = order.map((name) => {
@@ -40,7 +42,7 @@ export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = []
         (a, b) => (a.oil.tracked ? a.oil.left : UNTRACKED) - (b.oil.tracked ? b.oil.left : UNTRACKED),
       )[0]
     : null;
-  const inProgress = hobbies.filter((m) => m.status === 'active').slice(0, 5);
+  const inProgress = hobbies.filter(isUnderway).slice(0, 5);
 
   // Tonight + the next two evenings for the menu card.
   const menuDays = [0, 1, 2].map((i) => {
@@ -65,10 +67,10 @@ export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = []
         {/* hero */}
         <div
           style={{
-            background: 'linear-gradient(135deg,#c2724a,#a85a3a)',
+            background: heroGradient,
             borderRadius: 20,
             padding: '28px 30px',
-            color: '#fff',
+            color: colors.onAccent,
             position: 'relative',
             overflow: 'hidden',
           }}
@@ -137,7 +139,7 @@ export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = []
                 {t.title}
               </div>
               <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-                {catLabel[t.cat]} · {t.note || t.who}
+                {catLabel[t.cat]} · {t.note || t.who || 'Anyone'}
               </div>
             </div>
             <Pill task={t} />
@@ -242,6 +244,43 @@ export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = []
           )}
         </Card>
       </div>
+
+      {/* the cats — only when there are some */}
+      {pets.pets.length > 0 && (
+        <Card as="button" style={{ padding: '22px 26px', marginTop: 22, cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('pets')}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
+            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>The animals</div>
+            <div style={{ font: `500 12.5px ${fonts.sans}`, color: pets.mealsLeft ? colors.accent : tone.green }}>
+              {pets.mealsLeft === 0
+                ? 'All fed today'
+                : `${pets.mealsLeft} ${pets.mealsLeft === 1 ? 'meal' : 'meals'} to go`}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
+            {pets.pets.map((p) => (
+              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  aria-hidden="true"
+                  style={{ width: 34, height: 34, borderRadius: 12, background: colors.chipBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}
+                >
+                  {p.emoji}
+                </div>
+                <div>
+                  <div style={{ font: `600 13.5px ${fonts.sans}`, color: colors.ink }}>{p.name}</div>
+                  <div style={{ font: `400 11.5px ${fonts.sans}`, color: p.allFed ? tone.green : colors.muted }}>
+                    {p.meals.map((m) => (m.fed ? '●' : '○')).join(' ')} {p.allFed ? 'fed' : 'hungry'}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {pets.care.some((c) => c.tone === 'red') && (
+            <div style={{ font: `500 12px ${fonts.sans}`, color: tone.red, marginTop: 14 }}>
+              {pets.care.filter((c) => c.tone === 'red').map((c) => c.name).join(' · ')}
+            </div>
+          )}
+        </Card>
+      )}
 
       {/* a little life beyond the house */}
       <Card style={{ padding: '22px 26px', marginTop: 22 }}>
