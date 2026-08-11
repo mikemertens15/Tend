@@ -30,6 +30,29 @@ export const AISLES = [
 
 const AISLE_RANK = Object.fromEntries(AISLES.map(([key], i) => [key, i]));
 
+// Guess an aisle from an ingredient name, so pushing a recipe onto the list
+// doesn't dump twelve things into "Other". Same idea as the room guesser on
+// chores: a pre-selection you can correct, never a claim.
+const AISLE_HINTS = [
+  [/lettuce|spinach|kale|tomato|onion|garlic|potato|carrot|pepper|cucumber|broccoli|apple|banana|berr|lemon|lime|avocado|herb|basil|cilantro|parsley|mushroom|celery|ginger|salad|greens|fruit|veg/i, 'produce'],
+  [/chicken|beef|pork|lamb|mince|steak|bacon|sausage|turkey|salmon|shrimp|prawn|fish|cod|tuna(?! can)/i, 'meat'],
+  [/milk|cream|butter|cheese|yog|yoghurt|yogurt|egg|sour cream|parmesan|mozzarella|feta/i, 'dairy'],
+  [/bread|bun|roll|bagel|tortilla|pita|baguette|croissant|naan/i, 'bakery'],
+  [/frozen|ice cream|peas\b|fries/i, 'frozen'],
+  [/rice|pasta|noodle|flour|sugar|oil|vinegar|sauce|stock|broth|bean|lentil|can |tin |spice|salt|pepper corn|soy|honey|oat|cereal|tomatoes\b|paste|coconut milk/i, 'pantry'],
+  [/crisp|chip|cracker|cookie|biscuit|chocolate|candy|nuts|popcorn/i, 'snacks'],
+  [/water|juice|soda|coffee|tea\b|beer|wine|cola|seltzer/i, 'drinks'],
+  [/paper towel|toilet|detergent|soap|bleach|bin bag|trash bag|sponge|foil|wrap|dish soap/i, 'household'],
+  [/shampoo|toothpaste|deodorant|razor|lotion|conditioner/i, 'personal'],
+  [/cat |dog |litter|kibble|pet food/i, 'pet'],
+];
+
+export function guessAisle(title) {
+  const t = (title || '').trim();
+  if (!t) return 'other';
+  return AISLE_HINTS.find(([re]) => re.test(t))?.[1] ?? 'other';
+}
+
 // Quick-add chips so setting up your stores is three taps, not three forms.
 // Just a starting list — anything typed in gets saved the same way.
 export const COMMON_STORES = [
@@ -241,6 +264,58 @@ export function useGroceries() {
     [householdId, fetchAll, suggestPrice],
   );
 
+  // Push a meal's ingredients onto the list in one go. Anything already on the
+  // list unchecked is skipped rather than duplicated — planning chicken twice
+  // in a week shouldn't put chicken on the list twice.
+  const addIngredients = useCallback(
+    async (ingredients, storeId = null) => {
+      if (!householdId) return { added: 0, skipped: 0 };
+      const onList = new Set(rows.filter((r) => !r.done).map((r) => keyOf(r.title)));
+
+      const fresh = [];
+      for (const ing of ingredients) {
+        const title = (ing.title || '').trim();
+        if (!title) continue;
+        const key = keyOf(title);
+        if (onList.has(key)) continue;
+        onList.add(key);
+        const remembered = suggestPrice(title, storeId);
+        fresh.push({
+          household_id: householdId,
+          title,
+          qty: (ing.qty || '').trim() || null,
+          price: remembered?.price ?? null,
+          category: remembered?.category || guessAisle(title),
+          store_id: storeId,
+        });
+      }
+
+      if (fresh.length > 0) await supabase.from('grocery_items').insert(fresh);
+      fetchAll();
+      return { added: fresh.length, skipped: ingredients.length - fresh.length };
+    },
+    [householdId, rows, suggestPrice, fetchAll],
+  );
+
+  // What a set of ingredients would cost, from the price book. Returns what it
+  // knows and what it doesn't, because a total that quietly skips half the
+  // basket is worse than no total.
+  const estimate = useCallback(
+    (ingredients, storeId = null) => {
+      let known = 0;
+      let priced = 0;
+      for (const ing of ingredients) {
+        const hit = suggestPrice(ing.title, storeId);
+        if (hit) {
+          known += hit.price;
+          priced += 1;
+        }
+      }
+      return { total: money(known), priced, unpriced: ingredients.length - priced };
+    },
+    [suggestPrice],
+  );
+
   const updateItem = useCallback(
     async (id, patch) => {
       const row = {};
@@ -363,6 +438,8 @@ export function useGroceries() {
     budget,
     loading,
     addItem,
+    addIngredients,
+    estimate,
     updateItem,
     toggle,
     removeItem,

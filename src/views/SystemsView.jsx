@@ -4,11 +4,18 @@ import { Card } from '../components/ui';
 import { SystemModal } from '../components/SystemModal';
 import { statusColor } from './HomeView';
 import { useIsNarrow } from '../useMediaQuery';
+import { currentSeason, alreadyTracked } from '../data/seasons';
 
 export function SystemsView({ systems, onAdd, onUpdate, onRemove, onMarkDone }) {
   const narrow = useIsNarrow();
   // null = closed, 'new' = adding, otherwise the system being edited.
   const [editing, setEditing] = useState(null);
+  const [seasonOpen, setSeasonOpen] = useState(true);
+
+  // What the calendar says is worth doing, minus whatever's already tracked.
+  const season = currentSeason();
+  const names = systems.map((s) => s.name);
+  const suggestions = season.jobs.filter((j) => !alreadyTracked(j.name, names));
 
   return (
     <div>
@@ -26,6 +33,43 @@ export function SystemsView({ systems, onAdd, onUpdate, onRemove, onMarkDone }) 
           + Track a system
         </button>
       </div>
+
+      {suggestions.length > 0 && seasonOpen && (
+        <Card style={{ padding: '18px 24px', marginBottom: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 14 }}>
+            <span aria-hidden="true" style={{ fontSize: 22, lineHeight: 1.1 }}>
+              {season.icon}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ font: `400 20px ${fonts.serif}`, color: colors.ink }}>
+                {season.label} jobs
+              </div>
+              <div style={{ font: `400 12.5px ${fonts.sans}`, color: colors.muted, marginTop: 1 }}>
+                {season.blurb} Tap one to start tracking it — it'll come back round on its own next year.
+              </div>
+            </div>
+            <button
+              onClick={() => setSeasonOpen(false)}
+              aria-label="Hide seasonal suggestions"
+              title="Not now"
+              style={{ color: colors.faint, fontSize: 16, flexShrink: 0 }}
+            >
+              ×
+            </button>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            {suggestions.map((job) => (
+              <button
+                key={job.name}
+                onClick={() => onAdd({ name: job.name, interval_days: job.interval, last_done_on: null })}
+                style={{ padding: '8px 14px', borderRadius: 20, background: colors.chipBg, color: colors.muted3, font: `500 12.5px ${fonts.sans}` }}
+              >
+                + {job.name}
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {systems.length === 0 ? (
         <Card style={{ padding: '38px 30px', textAlign: 'center' }}>

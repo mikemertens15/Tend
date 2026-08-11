@@ -7,6 +7,7 @@ import { usePets, CARE_SUGGESTIONS, LOG_KINDS } from '../data/usePets';
 import { PetModal } from '../components/PetModal';
 import { PetCareModal } from '../components/PetCareModal';
 import { PetLogModal } from '../components/PetLogModal';
+import { ShareLinkModal } from '../components/ShareLinkModal';
 import { statusColor } from './HomeView';
 import { dayStr } from '../dates';
 
@@ -20,6 +21,7 @@ export function PetsView() {
   const [editingPet, setEditingPet] = useState(null); // 'new' | raw row | null
   const [editingCare, setEditingCare] = useState(null);
   const [logging, setLogging] = useState(null); // { petId } | null
+  const [sharing, setSharing] = useState(false);
 
   const { pets: roster, care, upcoming, history, mealsLeft, loading } = pets;
 
@@ -38,12 +40,22 @@ export function PetsView() {
                 : `${mealsLeft} ${mealsLeft === 1 ? 'meal' : 'meals'} still to go today.`}
           </div>
         </div>
-        <button
-          onClick={() => setEditingPet('new')}
-          style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent, whiteSpace: 'nowrap' }}
-        >
-          + Add a pet
-        </button>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {roster.length > 0 && (
+            <button
+              onClick={() => setSharing(true)}
+              style={{ padding: '9px 17px', borderRadius: 22, background: colors.chipBg, color: colors.muted3, font: `600 13px ${fonts.sans}`, whiteSpace: 'nowrap' }}
+            >
+              Share with a sitter
+            </button>
+          )}
+          <button
+            onClick={() => setEditingPet('new')}
+            style={{ padding: '9px 17px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent, whiteSpace: 'nowrap' }}
+          >
+            + Add a pet
+          </button>
+        </div>
       </div>
 
       {roster.length === 0 ? (
@@ -178,6 +190,7 @@ export function PetsView() {
           onDelete={pets.removeCare}
         />
       )}
+      {sharing && <ShareLinkModal onClose={() => setSharing(false)} />}
       {logging !== null && (
         <PetLogModal
           pets={roster}

@@ -14,7 +14,6 @@ export const NAV_GROUPS = [
       ['meals', 'Meals', '🍲'],
       ['groceries', 'Groceries', '🛒'],
       ['pets', 'Pets', '🐾'],
-      ['vehicles', 'Vehicles', '🚗'],
       ['systems', 'Systems', '🔧'],
       ['calendar', 'Calendar', '📅'],
       ['facts', 'Facts', '📋'],

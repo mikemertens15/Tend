@@ -7,8 +7,10 @@ import { useCollection } from '../data/useCollection';
 import { DOMAINS, ALL_HOBBY_DOMAINS, isUnderway } from '../data/collections';
 import { targetTone } from '../data/useGoals';
 import { usePets } from '../data/usePets';
+import { ROOMS } from '../data/rooms';
+import { buildNudges } from '../data/nudges';
 
-export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = [], week, onToggle, navigate }) {
+export function HomeView({ tasks, systems, mealsByKey = {}, goals = [], week, onToggle, navigate }) {
   const narrow = useIsNarrow();
   const { order, currentMember } = useHousehold();
   const { items: hobbies } = useCollection(ALL_HOBBY_DOMAINS);
@@ -34,15 +36,21 @@ export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = []
     return { name, done, total: mine.length, pct };
   });
 
-  // Surface the car closest to needing an oil change; untracked cars sort last
-  // (finite sentinel — Infinity - Infinity is NaN and breaks the comparator).
-  const UNTRACKED = Number.MAX_SAFE_INTEGER;
-  const v = vehicles.length
-    ? [...vehicles].sort(
-        (a, b) => (a.oil.tracked ? a.oil.left : UNTRACKED) - (b.oil.tracked ? b.oil.left : UNTRACKED),
-      )[0]
-    : null;
   const inProgress = hobbies.filter(isUnderway).slice(0, 5);
+
+  // Everything that's actually slipping, gathered from the sections that would
+  // otherwise each need visiting to find out.
+  const nudges = buildNudges({ tasks, systems, pets });
+
+  // Which rooms still want something, busiest first.
+  const busyRooms = ROOMS.map(([key, label, icon]) => ({
+    key,
+    label,
+    icon,
+    open: tasks.filter((t) => t.cat === 'chore' && !t.done && t.room === key).length,
+  }))
+    .filter((r) => r.open > 0)
+    .sort((a, b) => b.open - a.open);
 
   // Tonight + the next two evenings for the menu card.
   const menuDays = [0, 1, 2].map((i) => {
@@ -117,6 +125,40 @@ export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = []
         </Card>
       </div>
 
+      {/* what's actually slipping */}
+      {nudges.length > 0 && (
+        <Card style={{ padding: '16px 24px', marginBottom: 22 }}>
+          <div style={{ font: `600 11px ${fonts.sans}`, color: colors.faint, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>
+            Needs you
+          </div>
+          <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
+            {nudges.map((n) => (
+              <button
+                key={n.key}
+                onClick={() => navigate(n.go)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 9,
+                  padding: '9px 15px',
+                  borderRadius: 20,
+                  background: n.level === 'late' ? colors.chipBg : colors.inputBg,
+                  border: `1px solid ${n.level === 'late' ? tone.red : colors.cardBorder}`,
+                  font: `500 12.5px ${fonts.sans}`,
+                  color: colors.ink,
+                  textAlign: 'left',
+                }}
+              >
+                <span aria-hidden="true" style={{ fontSize: 14 }}>
+                  {n.icon}
+                </span>
+                {n.text}
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+
       {/* up next */}
       <Card style={{ padding: '22px 26px', marginBottom: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
@@ -147,33 +189,44 @@ export function HomeView({ tasks, systems, vehicles, mealsByKey = {}, goals = []
         ))}
       </Card>
 
-      {/* vehicle + systems summary */}
+      {/* rooms + systems summary */}
       <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 22 }}>
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('vehicles')}>
+        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('chores')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>In the driveway</div>
+            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Room by room</div>
             <div style={{ font: `500 12px ${fonts.sans}`, color: colors.muted }}>
-              {vehicles.length} {vehicles.length === 1 ? 'car' : 'cars'}
+              {busyRooms.length ? `${busyRooms.length} need attention` : 'all clear'}
             </div>
           </div>
-          {v ? (
-            <>
-              <div style={{ font: `600 14.5px ${fonts.sans}`, color: colors.ink }}>
-                {v.name} <span style={{ fontWeight: 400, fontSize: 12, color: colors.muted }}>· {v.milesLabel}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', font: `500 12px ${fonts.sans}`, color: colors.muted, margin: '12px 0 7px' }}>
-                <span>Next oil change</span>
-                <span style={{ color: v.oil.urgent ? tone.red : tone.green, fontWeight: 600 }}>{v.oil.label}</span>
-              </div>
-              <ProgressBar pct={v.oil.pct} height={7} />
-              <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-                {v.reg && <SummaryChip>Reg. renews {v.reg}</SummaryChip>}
-                {v.tires && <SummaryChip>Tires rotated {v.tires}</SummaryChip>}
-              </div>
-            </>
-          ) : (
+          {busyRooms.length === 0 ? (
             <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted }}>
-              No cars yet — add one to track oil changes, registration and insurance.
+              {todoCount + overdueCount === 0
+                ? 'Every room is clear. Nothing to do but enjoy it.'
+                : 'No room chores outstanding.'}
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              {busyRooms.slice(0, 6).map((r) => (
+                <span
+                  key={r.key}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '8px 13px',
+                    borderRadius: 20,
+                    background: colors.chipBg,
+                    font: `500 12.5px ${fonts.sans}`,
+                    color: colors.muted3,
+                  }}
+                >
+                  <span aria-hidden="true" style={{ fontSize: 14 }}>
+                    {r.icon}
+                  </span>
+                  {r.label}
+                  <span style={{ font: `700 11.5px ${fonts.sans}`, color: colors.accent }}>{r.open}</span>
+                </span>
+              ))}
             </div>
           )}
         </Card>

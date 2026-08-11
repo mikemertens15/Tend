@@ -8,7 +8,7 @@ import { useTheme, THEMES } from '../useTheme';
 // Account + household management, opened from the TopNav avatar: share the
 // invite code, see/add members, and sign out.
 export function HouseholdModal({ onClose }) {
-  const { household, members, addMember, currentMember } = useHousehold();
+  const { household, members, addMember, currentMember, settings, saveSettings } = useHousehold();
   const { signOut, setPassword } = useAuth();
   const { theme, setTheme } = useTheme();
   const [newName, setNewName] = useState('');
@@ -129,6 +129,37 @@ export function HouseholdModal({ onClose }) {
             );
           })}
         </div>
+
+        {/* Daily digest */}
+        <Label>Daily digest</Label>
+        <button
+          onClick={() => saveSettings({ dailyDigest: !settings.dailyDigest })}
+          aria-pressed={Boolean(settings.dailyDigest)}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 11,
+            width: '100%',
+            padding: '12px 14px',
+            borderRadius: 12,
+            marginBottom: 24,
+            textAlign: 'left',
+            background: settings.dailyDigest ? colors.chipBg : colors.inputBg,
+            border: `1px solid ${settings.dailyDigest ? colors.selected : colors.cardBorder}`,
+          }}
+        >
+          <span style={{ fontSize: 15, lineHeight: 1.2 }}>{settings.dailyDigest ? '📬' : '📭'}</span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', font: `600 13px ${fonts.sans}`, color: colors.ink }}>
+              Email us what's slipping
+            </span>
+            <span style={{ display: 'block', font: `400 11.5px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
+              One message a day to everyone with a login, and only on days something is actually late. Needs the
+              digest function switched on for the project first — see supabase/functions/daily-digest. Nothing is
+              sent until then.
+            </span>
+          </span>
+        </button>
 
         {/* Invite code */}
         <Label>Invite the family</Label>

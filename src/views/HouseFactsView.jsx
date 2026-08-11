@@ -130,6 +130,11 @@ function FactRow({ fact, topBorder, onEdit }) {
           title="Edit"
         >
           {fact.label}
+          {fact.shareable && (
+            <span title="Visible on sitter links" aria-label="Visible on sitter links" style={{ marginLeft: 5 }}>
+              🔗
+            </span>
+          )}
         </button>
         <div style={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
           <button

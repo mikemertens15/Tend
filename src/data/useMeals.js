@@ -75,6 +75,7 @@ export function useMeals() {
         title: r.title,
         note: r.note ?? undefined,
         cook: nameById[r.cook_member_id] ?? null,
+        ingredients: Array.isArray(r.ingredients) ? r.ingredients : [],
         raw: r,
       };
     }
@@ -83,12 +84,20 @@ export function useMeals() {
 
   // Insert-or-replace the meal for a given day + slot.
   const setMeal = useCallback(
-    async ({ on_date, slot = 'dinner', title, note, cook_member_id }) => {
+    async ({ on_date, slot = 'dinner', title, note, cook_member_id, ingredients = [] }) => {
       if (!householdId) return;
       const { error } = await supabase
         .from('meal_plans')
         .upsert(
-          { household_id: householdId, on_date, slot, title, note: note || null, cook_member_id },
+          {
+            household_id: householdId,
+            on_date,
+            slot,
+            title,
+            note: note || null,
+            cook_member_id,
+            ingredients,
+          },
           { onConflict: 'household_id,on_date,slot' },
         );
       if (!error) fetchMeals();

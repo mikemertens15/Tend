@@ -14,6 +14,7 @@ export function HouseFactModal({ fact, onClose, onSave, onDelete }) {
   const [detail, setDetail] = useState(fact?.detail ?? '');
   const [location, setLocation] = useState(fact?.location ?? '');
   const [secret, setSecret] = useState(fact?.secret ?? false);
+  const [shareable, setShareable] = useState(fact?.shareable ?? false);
 
   function submit() {
     if (!label.trim() || !value.trim()) return;
@@ -24,6 +25,7 @@ export function HouseFactModal({ fact, onClose, onSave, onDelete }) {
       detail: detail.trim() || null,
       location: location.trim() || null,
       secret,
+      shareable,
     });
     onClose();
   }
@@ -98,32 +100,54 @@ export function HouseFactModal({ fact, onClose, onSave, onDelete }) {
         </div>
       </div>
 
-      <button
+      <Toggle
+        on={secret}
         onClick={() => setSecret((s) => !s)}
-        aria-pressed={secret}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 11,
-          width: '100%',
-          padding: '12px 14px',
-          borderRadius: 12,
-          background: secret ? colors.chipBg : colors.inputBg,
-          border: `1px solid ${secret ? colors.selected : colors.cardBorder}`,
-          textAlign: 'left',
-        }}
-      >
-        <span style={{ fontSize: 15 }}>{secret ? '🙈' : '👁️'}</span>
-        <span style={{ flex: 1 }}>
-          <span style={{ display: 'block', font: `600 13px ${fonts.sans}`, color: colors.ink }}>
-            Hide the value until tapped
-          </span>
-          <span style={{ display: 'block', font: `400 11.5px/1.4 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-            Cover from a passing glance at the kitchen tablet — it's still stored as plain text, so don't put anything
-            that really matters in here.
-          </span>
-        </span>
-      </button>
+        icon={secret ? '🙈' : '👁️'}
+        title="Hide the value until tapped"
+        blurb="Cover from a passing glance at the kitchen tablet — it's still stored as plain text, so don't put anything that really matters in here."
+      />
+
+      <Toggle
+        on={shareable}
+        onClick={() => setShareable((s) => !s)}
+        icon={shareable ? '🔗' : '🔒'}
+        title="A sitter can see this"
+        blurb={
+          shareable
+            ? 'Shows in full on any sitter link that includes house facts — including hidden values, which are not masked there.'
+            : 'Off by default. Nothing about the house appears on a sitter link unless you tick it here.'
+        }
+      />
     </ModalShell>
+  );
+}
+
+function Toggle({ on, onClick, icon, title, blurb }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={on}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 11,
+        width: '100%',
+        padding: '12px 14px',
+        borderRadius: 12,
+        marginBottom: 10,
+        background: on ? colors.chipBg : colors.inputBg,
+        border: `1px solid ${on ? colors.selected : colors.cardBorder}`,
+        textAlign: 'left',
+      }}
+    >
+      <span style={{ fontSize: 15, lineHeight: 1.2 }}>{icon}</span>
+      <span style={{ flex: 1 }}>
+        <span style={{ display: 'block', font: `600 13px ${fonts.sans}`, color: colors.ink }}>{title}</span>
+        <span style={{ display: 'block', font: `400 11.5px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
+          {blurb}
+        </span>
+      </span>
+    </button>
   );
 }

@@ -28,7 +28,7 @@ export const colors = {
   todayBg: 'var(--c-today-bg)',
 };
 
-// Status tones for systems / vehicles / pet care.
+// Status tones for home systems and pet care.
 export const tone = {
   red: 'var(--t-red)',
   amber: 'var(--t-amber)',
@@ -55,7 +55,7 @@ export const AVATAR_PALETTE = [
   { bg: '#b6cbe0', color: '#274056' },
 ];
 
-export const catLabel = { chore: 'Chore', vehicle: 'Vehicle', system: 'Home' };
+export const catLabel = { chore: 'Chore', system: 'Home' };
 
 export const fonts = {
   sans: "'Hanken Grotesk', system-ui, sans-serif",

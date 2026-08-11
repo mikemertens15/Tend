@@ -80,6 +80,8 @@ export function useTasks() {
         who: nameById[r.assignee_id] ?? null,
         note: r.note ?? undefined,
         done: r.done,
+        room: r.room ?? 'whole',
+        effortMinutes: r.effort_minutes ?? null,
         dueOn: r.due_on,
         repeatDays: r.repeat_days ?? null,
         repeatLabel: repeatLabel(r.repeat_days),
@@ -122,6 +124,8 @@ export function useTasks() {
             assignee_id: current.assignee_id,
             note: current.note,
             repeat_days: current.repeat_days,
+            room: current.room,
+            effort_minutes: current.effort_minutes,
             due_on: nextOccurrence(current.due_on, current.repeat_days),
             done: false,
           });
@@ -133,7 +137,7 @@ export function useTasks() {
   );
 
   const addTask = useCallback(
-    async ({ title, cat, who, note, dueOn, repeatDays }) => {
+    async ({ title, cat, who, note, dueOn, repeatDays, room, effortMinutes }) => {
       if (!householdId) return;
       const { error } = await supabase.from('tasks').insert({
         household_id: householdId,
@@ -143,6 +147,8 @@ export function useTasks() {
         note: (note || '').trim() || null,
         due_on: dueOn || dayStr(),
         repeat_days: repeatDays ?? null,
+        room: room || 'whole',
+        effort_minutes: effortMinutes ?? null,
         done: false,
       });
       if (!error) fetchTasks();

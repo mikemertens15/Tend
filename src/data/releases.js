@@ -8,6 +8,30 @@
 
 export const RELEASES = [
   {
+    version: '0.9.0',
+    date: '2026-08-11',
+    name: 'Hand it over',
+    notes: [
+      ['added', 'Sitter mode — share a link and whoever is watching the house gets the feeding routine, the care jobs, the vet\'s number and anything you\'ve marked shareable. They can tick meals off as they go. No account, and they see nothing else.'],
+      ['added', 'Meals know what they need. Write the ingredients once, then push a whole week onto the grocery list in one tap, priced from what you last paid.'],
+      ['added', '"Needs you" on the home dashboard — everything actually slipping, gathered from every section into one row.'],
+      ['added', 'Seasonal jobs. Tend knows what month it is and suggests the upkeep that goes with it — gutters and the furnace in autumn, the AC in spring.'],
+      ['added', 'An optional daily email digest, sent only on days something is genuinely late. Off until you switch it on.'],
+    ],
+  },
+  {
+    version: '0.8.0',
+    date: '2026-08-11',
+    name: 'Room by room',
+    notes: [
+      ['changed', 'Chores are organised by room instead of one long list — each room is a card with its own progress ring, busiest room first.'],
+      ['added', '"Got a minute?" — say how long you have and Tend shows only the chores that fit.'],
+      ['added', 'Chores can carry a room and a rough time estimate. Type "dishes" and it picks the kitchen for you.'],
+      ['added', 'A room-by-room summary on the home dashboard.'],
+      ['removed', 'Vehicles. Car maintenance is moving to its own app, GarageOps. The two car tasks that existed were kept and filed under Garage rather than deleted.'],
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-08-11',
     name: 'Pets, prices and a dark room',

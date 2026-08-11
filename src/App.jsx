@@ -4,7 +4,6 @@ import { getWeek } from './dates';
 import { useHashRoute } from './useHashRoute';
 import { useIsPhone } from './useMediaQuery';
 import { useTasks } from './data/useTasks';
-import { useVehicles } from './data/useVehicles';
 import { useSystems } from './data/useSystems';
 import { useMeals } from './data/useMeals';
 import { useGoals } from './data/useGoals';
@@ -13,7 +12,6 @@ import { MobileNav } from './components/MobileNav';
 import { AddTaskModal } from './components/AddTaskModal';
 import { HomeView } from './views/HomeView';
 import { ChoresView } from './views/ChoresView';
-import { VehiclesView } from './views/VehiclesView';
 import { SystemsView } from './views/SystemsView';
 import { CalendarView } from './views/CalendarView';
 import { HobbiesView } from './views/HobbiesView';
@@ -25,6 +23,7 @@ import { PetsView } from './views/PetsView';
 import { HouseFactsView } from './views/HouseFactsView';
 import { GoalsView } from './views/GoalsView';
 import { ReleasesView } from './views/ReleasesView';
+import { SitterView } from './views/SitterView';
 import { useAuth } from './auth/AuthProvider';
 import { useHousehold } from './household/HouseholdProvider';
 import { SignIn } from './auth/SignIn';
@@ -35,6 +34,15 @@ import { HouseholdModal } from './household/HouseholdModal';
 export default function App() {
   const { session, loading: authLoading, recovering } = useAuth();
   const { household, loading: householdLoading } = useHousehold();
+  const [route] = useHashRoute('home');
+
+  // The sitter page is the one route that renders without a session — it's for
+  // someone who doesn't have an account and shouldn't need one. It reads
+  // everything through a token-scoped RPC, so it sits in front of the gate
+  // rather than inside it.
+  if (route.startsWith('sitter/')) {
+    return <SitterView token={route.slice('sitter/'.length)} />;
+  }
 
   // Gate: load session → set a new password (if we got here from a reset
   // email) → sign in → load household → onboarding → the app.
@@ -58,7 +66,6 @@ function Dashboard() {
   // alone — groceries, pets, facts, hobbies — own their data, so opening the
   // app doesn't fetch and subscribe to every table in the database.
   const { tasks, toggle, addTask } = useTasks();
-  const { vehicles, addVehicle, updateVehicle, removeVehicle } = useVehicles();
   const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems();
   const { mealsByKey, setMeal, removeMeal } = useMeals();
   const goals = useGoals();
@@ -99,7 +106,6 @@ function Dashboard() {
           <HomeView
             tasks={tasks}
             systems={systems}
-            vehicles={vehicles}
             mealsByKey={mealsByKey}
             goals={goals.active}
             week={week}
@@ -108,9 +114,6 @@ function Dashboard() {
           />
         )}
         {view === 'chores' && <ChoresView tasks={tasks} onToggle={toggle} onAdd={() => setModalOpen(true)} />}
-        {view === 'vehicles' && (
-          <VehiclesView vehicles={vehicles} onAdd={addVehicle} onUpdate={updateVehicle} onRemove={removeVehicle} />
-        )}
         {view === 'systems' && (
           <SystemsView
             systems={systems}

@@ -3,11 +3,11 @@ import { colors, fonts } from '../theme';
 import { ModalShell, Label, Chip, inputStyle, PrimaryButton, GhostButton, MemberPicker } from './Modal';
 import { useHousehold } from '../household/HouseholdProvider';
 import { REPEATS } from '../data/useTasks';
+import { ROOMS, EFFORTS, guessRoom } from '../data/rooms';
 import { dayStr, addDays, parseDay, shortDay } from '../dates';
 
 const CATS = [
   ['chore', 'Chore'],
-  ['vehicle', 'Vehicle'],
   ['system', 'Home system'],
 ];
 
@@ -21,6 +21,22 @@ export function AddTaskModal({ onClose, onAdd }) {
   const [dueOn, setDueOn] = useState(dayStr());
   const [repeatDays, setRepeatDays] = useState(null);
   const [note, setNote] = useState('');
+  const [room, setRoom] = useState('whole');
+  const [effortMinutes, setEffortMinutes] = useState(null);
+  // Once you've picked a room yourself, typing stops second-guessing you.
+  const [roomTouched, setRoomTouched] = useState(false);
+
+  function retitle(next) {
+    setTitle(next);
+    if (roomTouched) return;
+    const guess = guessRoom(next);
+    if (guess) setRoom(guess);
+  }
+
+  function pickRoom(next) {
+    setRoom(next);
+    setRoomTouched(true);
+  }
 
   // Quick dates cover nearly every real answer to "when?", with the date input
   // underneath for the rest.
@@ -40,6 +56,8 @@ export function AddTaskModal({ onClose, onAdd }) {
       note,
       dueOn,
       repeatDays,
+      room,
+      effortMinutes,
     });
     onClose();
   }
@@ -59,11 +77,33 @@ export function AddTaskModal({ onClose, onAdd }) {
       <input
         autoFocus
         value={title}
-        onChange={(e) => setTitle(e.target.value)}
+        onChange={(e) => retitle(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && submit()}
         placeholder="e.g. Clean out the garage"
         style={inputStyle}
       />
+
+      <Label>Where?</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        {ROOMS.map(([key, label, icon]) => (
+          <Chip key={key} active={room === key} onClick={() => pickRoom(key)}>
+            {icon} {label}
+          </Chip>
+        ))}
+      </div>
+
+      <Label>How long does it take?</Label>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        {EFFORTS.map(([mins, label]) => (
+          <Chip
+            key={mins}
+            active={effortMinutes === mins}
+            onClick={() => setEffortMinutes(effortMinutes === mins ? null : mins)}
+          >
+            {label}
+          </Chip>
+        ))}
+      </div>
 
       <Label>Category</Label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>

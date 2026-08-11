@@ -1,14 +1,19 @@
 import { useState, useMemo } from 'react';
-import { colors, fonts } from '../theme';
+import { colors, shadows, fonts } from '../theme';
 import { Card, Avatar } from '../components/ui';
 import { MealModal } from '../components/MealModal';
+import { useGroceries } from '../data/useGroceries';
 import { getWeek, weekRangeLabel, dayStr } from '../dates';
+
+const usd = (n) => `$${(Number(n) || 0).toFixed(2)}`;
 
 // Weekly dinner planner. Pages between last week and two weeks out — the same
 // window useMeals fetches, so paging never waits on the network.
 export function MealsView({ mealsByKey, setMeal, removeMeal }) {
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState(null); // { date, meal: raw row | null }
+  const [pushed, setPushed] = useState(null);
+  const groceries = useGroceries();
 
   const week = useMemo(() => {
     const base = new Date();
@@ -18,6 +23,16 @@ export function MealsView({ mealsByKey, setMeal, removeMeal }) {
 
   const weekWord =
     offset === -1 ? 'Last week' : offset === 0 ? 'This week' : offset === 1 ? 'Next week' : 'In two weeks';
+
+  // Everything this week's dinners need, and what the price book thinks that
+  // costs. This is the number the meal plan exists to produce.
+  const weekIngredients = week.days.flatMap((d) => mealsByKey[`${dayStr(d.date)}:dinner`]?.ingredients ?? []);
+  const cost = groceries.estimate(weekIngredients);
+
+  async function shopTheWeek() {
+    const result = await groceries.addIngredients(weekIngredients);
+    setPushed(result);
+  }
 
   return (
     <div>
@@ -41,6 +56,42 @@ export function MealsView({ mealsByKey, setMeal, removeMeal }) {
           </PagerButton>
         </div>
       </div>
+
+      {weekIngredients.length > 0 && (
+        <Card style={{ padding: '16px 24px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: 220 }}>
+            <div style={{ font: `600 14px ${fonts.sans}`, color: colors.ink }}>
+              {weekIngredients.length} {weekIngredients.length === 1 ? 'ingredient' : 'ingredients'} across the week
+              {cost.priced > 0 && ` · about ${usd(cost.total)}`}
+            </div>
+            <div style={{ font: `400 12.5px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
+              {cost.unpriced > 0
+                ? `${cost.priced} priced from what you've paid before; ${cost.unpriced} ${cost.unpriced === 1 ? "hasn't" : "haven't"} been bought yet.`
+                : "Every one of them priced from what you've paid before."}
+            </div>
+          </div>
+          <button
+            onClick={shopTheWeek}
+            style={{ padding: '10px 18px', borderRadius: 20, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent, whiteSpace: 'nowrap' }}
+          >
+            Add to groceries
+          </button>
+        </Card>
+      )}
+
+      {pushed && (
+        <Card style={{ padding: '14px 24px', marginBottom: 18, display: 'flex', alignItems: 'center', gap: 12 }}>
+          <span aria-hidden="true">🛒</span>
+          <div style={{ flex: 1, font: `500 13.5px ${fonts.sans}`, color: colors.ink }}>
+            {pushed.added === 0
+              ? 'Everything was already on the list.'
+              : `${pushed.added} added to the grocery list${pushed.skipped > 0 ? ` · ${pushed.skipped} already there` : ''}.`}
+          </div>
+          <button onClick={() => setPushed(null)} aria-label="Dismiss" style={{ color: colors.faint, fontSize: 15 }}>
+            ×
+          </button>
+        </Card>
+      )}
 
       <Card style={{ padding: '10px 26px' }}>
         {week.days.map((d, i) => {
@@ -82,9 +133,15 @@ export function MealsView({ mealsByKey, setMeal, removeMeal }) {
                 {meal ? (
                   <>
                     <div style={{ font: `600 14.5px ${fonts.sans}`, color: colors.ink }}>{meal.title}</div>
-                    {(meal.note || meal.cook) && (
+                    {(meal.note || meal.cook || meal.ingredients.length > 0) && (
                       <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-                        {[meal.cook && `${meal.cook} cooking`, meal.note].filter(Boolean).join(' · ')}
+                        {[
+                          meal.cook && `${meal.cook} cooking`,
+                          meal.ingredients.length > 0 && `${meal.ingredients.length} ingredients`,
+                          meal.note,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </div>
                     )}
                   </>
