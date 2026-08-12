@@ -4,6 +4,7 @@ import { Card, Avatar, Check, Pill } from '../components/ui';
 import { useIsNarrow } from '../useMediaQuery';
 import { useHousehold } from '../household/HouseholdProvider';
 import { ROOMS, ROOM_RANK, roomMeta, effortLabel } from '../data/rooms';
+import { matchesOwner } from '../data/owner';
 
 // Chores, arranged by room rather than as one long list.
 //
@@ -21,7 +22,8 @@ export function ChoresView({ tasks, onToggle, onAdd }) {
   const [showDone, setShowDone] = useState(false);
 
   const chores = tasks.filter((t) => t.cat === 'chore');
-  const mine = chores.filter((t) => who === 'all' || t.who === who);
+  // Unassigned chores are everyone's, so they show under every filter.
+  const mine = chores.filter((t) => matchesOwner(who, t.who));
   const open = mine.filter((t) => !t.done);
   const done = mine.filter((t) => t.done);
 

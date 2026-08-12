@@ -5,6 +5,7 @@ import { useHousehold } from '../household/HouseholdProvider';
 import { useCollection } from '../data/useCollection';
 import { CollectionItemModal } from '../components/CollectionItemModal';
 import { DOMAINS, HOBBY_SECTIONS, isUnderway, optionValue, optionLabel } from '../data/collections';
+import { matchesOwner, OWNER_ALL } from '../data/owner';
 
 // One view for every hobby. Everything on screen — the lifecycle tabs, the
 // status toggle, the subtitle line, whether there's a progress bar — comes
@@ -21,7 +22,7 @@ export function CollectionView({ section, navigate }) {
 
   const spec = DOMAINS[domain];
   const ofDomain = items.filter((i) => i.domain === domain);
-  const visible = ofDomain.filter((i) => owner === 'all' || i.owner === owner);
+  const visible = ofDomain.filter((i) => matchesOwner(owner, i.owner));
   // Counted off `visible`, not the whole domain, so the summary line always
   // describes the list underneath it rather than someone else's shelf.
   const inProgress = visible.filter(isUnderway).length;
@@ -119,10 +120,28 @@ export function CollectionView({ section, navigate }) {
       )}
 
       {loading ? null : visible.length === 0 ? (
-        <Card style={{ padding: '40px 0', textAlign: 'center' }}>
-          <div style={{ font: `400 15px ${fonts.sans}`, color: colors.muted }}>
-            Nothing here yet — add a {spec.noun.toLowerCase()} to get started.
-          </div>
+        <Card style={{ padding: '36px 24px', textAlign: 'center' }}>
+          {/* "Empty" and "all of it is filtered out" are different problems and
+              need different words — saying "nothing here yet" over the top of
+              items that exist is how one got lost in the first place. */}
+          {ofDomain.length > 0 ? (
+            <>
+              <div style={{ font: `400 15px ${fonts.sans}`, color: colors.muted, marginBottom: 14 }}>
+                {ofDomain.length} {(ofDomain.length === 1 ? spec.noun : spec.label).toLowerCase()} hidden by the{' '}
+                {owner === OWNER_ALL ? 'current filter' : `“${owner}” filter`}.
+              </div>
+              <button
+                onClick={() => setOwner(OWNER_ALL)}
+                style={{ padding: '8px 16px', borderRadius: 20, background: colors.chipBg, color: colors.muted3, font: `600 12.5px ${fonts.sans}` }}
+              >
+                Show everyone's
+              </button>
+            </>
+          ) : (
+            <div style={{ font: `400 15px ${fonts.sans}`, color: colors.muted }}>
+              Nothing here yet — add a {spec.noun.toLowerCase()} to get started.
+            </div>
+          )}
         </Card>
       ) : (
         spec.statuses.map((status) => {

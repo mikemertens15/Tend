@@ -8,6 +8,16 @@
 
 export const RELEASES = [
   {
+    version: '0.10.1',
+    date: '2026-08-12',
+    name: 'Where did it go',
+    notes: [
+      ['fixed', 'Anything marked Shared vanished the moment it was saved. The person filter defaults to you, and a shared item has no owner, so it matched nobody — and in a one-person household the filter buttons aren\'t drawn, so there was no way to get it back. Shared things now show under everyone\'s filter, which is what shared means.'],
+      ['fixed', 'The same bug hid chores assigned to "Anyone" whenever a person filter was on.'],
+      ['changed', 'An empty list now says whether it\'s actually empty or just filtered, with a button to clear the filter.'],
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-08-11',
     name: 'On the kitchen wall',
