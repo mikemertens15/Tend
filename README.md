@@ -50,6 +50,8 @@ emails come back to the app.
 
 **Household** — Chores, Meals, Groceries, Pets, Systems, Calendar, Facts.
 **Life** — Hobbies, Goals.
+Plus two views with no nav entry: the **kitchen display** (`#/hub`) and the
+public **sitter page** (`#/sitter/<token>`).
 
 A few of these are worth explaining, because the design decision isn't obvious:
 
@@ -152,14 +154,42 @@ public/
 The schema, RLS policies and the `create_household` / `join_household` RPCs live
 as Supabase migrations on the project.
 
-## Two skins
+## The kitchen display
 
-`theme.js` hands out every colour as `var(--…)`, and `index.css` defines both
+`#/hub` is a full-screen view meant for a tablet or TV on a wall: the time, what's
+on today, tonight's dinner, whether the animals have been fed, and the next four
+days. No nav, nothing small, nothing that scrolls — if it doesn't fit it doesn't
+belong on it. Sizes are in `vmin` so the same layout works on a 10" tablet and a
+40" TV without a breakpoint, and it rolls over at midnight on its own because
+everything is derived from a clock that ticks on the minute (`useWallClock.js`).
+
+It asks for a screen wake lock, which most devices only honour if their own
+timeout setting allows it — hence the per-device setup guides, reachable from
+the **Kitchen display** button on the Calendar page.
+
+It sits behind the normal auth gate: sign the device in once and leave it.
+
+## Skins
+
+`theme.js` hands out every colour as `var(--…)`, and `index.css` defines the
 palettes. A component writes `colors.ink` and never knows which skin it's in.
-`data-theme` is stamped on `<html>` by a boot script in `index.html` before first
-paint, so there's no flash of the wrong one. Light ("Warm") is Direction B from
-the original design handoff; dark ("Wall display") is Direction C, meant for an
-always-on tablet. With no explicit choice stored, Tend follows the OS.
+
+Two independent dials, both stamped on `<html>` by a boot script in `index.html`
+before first paint so there's no flash of the wrong one:
+
+- **`data-palette`** — `warm` (Direction B from the original handoff), `calm`
+  (Direction A), `garden`, `dusk`.
+- **`data-mode`** — `light` or `dark`, resolved from the OS when the stored
+  preference is "match device", and kept in sync if the OS changes.
+
+Adding a palette is two CSS blocks plus an entry in `data/palettes.js`. Keep the
+token order identical across blocks; that's what makes them reviewable side by
+side.
+
+The three newer palettes clear WCAG AA (4.5:1) on body text, secondary text,
+status colours and text-on-accent, in both modes. Warm is deliberately left at
+the handoff's original values, which sit nearer 3:1 on the faintest secondary
+text — changing them would change the look the app was designed around.
 
 ## Releases
 

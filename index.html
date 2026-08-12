@@ -21,24 +21,41 @@
     <title>Tend</title>
     <script>
       // Pick the skin before first paint, so the app never flashes the wrong
-      // one. Mirrors resolveTheme() in src/useTheme.js — a stored choice wins,
-      // otherwise follow the OS.
+      // one. Mirrors src/useTheme.js: a stored palette and mode win, and mode
+      // 'system' (the default) follows the OS.
       (function () {
-        var t = 'light';
+        var palette = 'warm';
+        var mode = 'light';
         try {
-          var saved = localStorage.getItem('tend.theme');
-          t =
-            saved === 'light' || saved === 'dark'
-              ? saved
+          var p = localStorage.getItem('tend.palette');
+          if (['warm', 'calm', 'garden', 'dusk'].indexOf(p) >= 0) palette = p;
+          var m = localStorage.getItem('tend.mode') || 'system';
+          mode =
+            m === 'light' || m === 'dark'
+              ? m
               : window.matchMedia('(prefers-color-scheme: dark)').matches
                 ? 'dark'
                 : 'light';
         } catch (e) {
-          /* no localStorage (private mode) — stay light */
+          /* no localStorage (private mode) — stay with the defaults */
         }
-        document.documentElement.dataset.theme = t;
+        var root = document.documentElement;
+        root.dataset.palette = palette;
+        root.dataset.mode = mode;
+        // Status bar tint. The stylesheet may not have loaded this early, so
+        // fall back to a small map; useTheme re-reads the real value from the
+        // stylesheet once React mounts and corrects any drift.
+        var BG = {
+          'warm-light': '#f4ece1', 'warm-dark': '#17120f',
+          'calm-light': '#f4f6f8', 'calm-dark': '#11151a',
+          'garden-light': '#f1f4ed', 'garden-dark': '#12160f',
+          'dusk-light': '#f4f2f8', 'dusk-dark': '#15121b',
+        };
         var meta = document.querySelector('meta[name="theme-color"]');
-        if (meta) meta.setAttribute('content', t === 'dark' ? '#17120f' : '#f4ece1');
+        if (meta) {
+          var fromCss = getComputedStyle(root).getPropertyValue('--c-bg').trim();
+          meta.setAttribute('content', fromCss || BG[palette + '-' + mode] || '#f4ece1');
+        }
       })();
     </script>
   </head>

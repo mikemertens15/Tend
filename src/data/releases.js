@@ -8,6 +8,17 @@
 
 export const RELEASES = [
   {
+    version: '0.10.0',
+    date: '2026-08-11',
+    name: 'On the kitchen wall',
+    notes: [
+      ['added', 'A kitchen display: full-screen, readable across a room, and built to be left on. The time, what\'s on today, tonight\'s dinner, whether the animals have been fed, and the next four days. Setup guides for iPad, Android and a mounted TV live on the Calendar page.'],
+      ['added', 'The calendar holds events now, not just chores — birthdays that work out which one it is, appointments with times, trips that span days, and anything else the house is doing.'],
+      ['added', 'Month view, alongside the week.'],
+      ['added', 'Four colour schemes — Warm, Calm, Garden and Dusk — each in light and dark, or matching your device. The three new ones were checked against WCAG AA.'],
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-08-11',
     name: 'Hand it over',

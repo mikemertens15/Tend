@@ -1,69 +1,83 @@
 import { useState, useEffect, useCallback } from 'react';
 
-// Skin switching. The palettes are CSS custom properties (index.css), so all
-// this does is stamp `data-theme` on <html> — no re-render of the tree, no
-// context threaded through every component.
+// Skin switching on two independent dials: which palette, and light or dark.
+// Both are stamped on <html>; the palettes are CSS custom properties, so this
+// re-renders nothing — no context threaded through every component.
 //
-// A stored choice is an override. With nothing stored we follow the OS and
-// keep following it, so a tablet that dims itself at night comes along too.
+// Mode 'system' means "keep following the OS", and keeps following it, so a
+// tablet that dims itself at night comes along too.
 
-const KEY = 'tend.theme';
+const PALETTE_KEY = 'tend.palette';
+const MODE_KEY = 'tend.mode';
+const PALETTES = ['warm', 'calm', 'garden', 'dusk'];
 
-export const THEMES = [
-  ['light', 'Warm', 'Cream and terracotta'],
-  ['dark', 'Wall display', 'Dark, for an always-on tablet'],
-];
+const read = (key, allowed, fallback) => {
+  try {
+    const v = localStorage.getItem(key);
+    return allowed.includes(v) ? v : fallback;
+  } catch {
+    // Private browsing can throw on localStorage access.
+    return fallback;
+  }
+};
 
 const prefersDark = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
 
-const stored = () => {
-  try {
-    const v = localStorage.getItem(KEY);
-    return v === 'light' || v === 'dark' ? v : null;
-  } catch {
-    // Private browsing can throw on localStorage access; fall back to the OS.
-    return null;
-  }
-};
+export const storedPalette = () => read(PALETTE_KEY, PALETTES, 'warm');
+export const storedMode = () => read(MODE_KEY, ['system', 'light', 'dark'], 'system');
+export const resolveMode = (mode) => (mode === 'system' ? (prefersDark() ? 'dark' : 'light') : mode);
 
-export function resolveTheme() {
-  return stored() ?? (prefersDark() ? 'dark' : 'light');
+// Status bar / installed-app title bar colour, read back off the stylesheet so
+// it can't drift from the palette it's meant to match.
+function paintMeta() {
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (!meta) return;
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--c-bg').trim();
+  if (bg) meta.setAttribute('content', bg);
 }
 
-function paint(theme) {
-  document.documentElement.dataset.theme = theme;
-  // Colour the phone status bar / installed-app title bar to match.
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', theme === 'dark' ? '#17120f' : '#f4ece1');
+export function applyTheme(palette, mode) {
+  const root = document.documentElement;
+  root.dataset.palette = palette;
+  root.dataset.mode = resolveMode(mode);
+  paintMeta();
 }
 
 export function useTheme() {
-  const [theme, setThemeState] = useState(resolveTheme);
-  // Null means "no explicit choice yet" — keep tracking the OS.
-  const [pinned, setPinned] = useState(() => stored() !== null);
+  const [palette, setPaletteState] = useState(storedPalette);
+  const [mode, setModeState] = useState(storedMode);
 
   useEffect(() => {
-    paint(theme);
-  }, [theme]);
+    applyTheme(palette, mode);
+  }, [palette, mode]);
 
+  // Only while following the OS.
   useEffect(() => {
-    if (pinned) return;
+    if (mode !== 'system') return;
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const update = () => setThemeState(mq.matches ? 'dark' : 'light');
+    const update = () => applyTheme(palette, 'system');
     mq.addEventListener('change', update);
     return () => mq.removeEventListener('change', update);
-  }, [pinned]);
+  }, [mode, palette]);
 
-  const setTheme = useCallback((next) => {
+  const persist = (key, value) => {
     try {
-      localStorage.setItem(KEY, next);
+      localStorage.setItem(key, value);
     } catch {
       // Not being able to remember the choice shouldn't stop it applying now.
     }
-    setPinned(true);
-    setThemeState(next);
+  };
+
+  const setPalette = useCallback((next) => {
+    persist(PALETTE_KEY, next);
+    setPaletteState(next);
   }, []);
 
-  return { theme, setTheme };
+  const setMode = useCallback((next) => {
+    persist(MODE_KEY, next);
+    setModeState(next);
+  }, []);
+
+  return { palette, mode, resolvedMode: resolveMode(mode), setPalette, setMode };
 }

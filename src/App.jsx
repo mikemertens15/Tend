@@ -24,6 +24,7 @@ import { HouseFactsView } from './views/HouseFactsView';
 import { GoalsView } from './views/GoalsView';
 import { ReleasesView } from './views/ReleasesView';
 import { SitterView } from './views/SitterView';
+import { HubView } from './views/HubView';
 import { useAuth } from './auth/AuthProvider';
 import { useHousehold } from './household/HouseholdProvider';
 import { SignIn } from './auth/SignIn';
@@ -77,6 +78,10 @@ function Dashboard() {
   // view; anything unrecognised falls through to Home.
   const hobbySection = sectionByKey(view);
 
+  // The kitchen display replaces the whole app chrome — no nav, no add button,
+  // nothing to accidentally press while reaching past it for the kettle.
+  if (view === 'hub') return <HubView navigate={navigate} />;
+
   return (
     <div style={{ minHeight: '100vh', background: colors.bg }}>
       <TopNav
@@ -123,7 +128,7 @@ function Dashboard() {
             onMarkDone={markDone}
           />
         )}
-        {view === 'calendar' && <CalendarView tasks={tasks} week={week} />}
+        {view === 'calendar' && <CalendarView tasks={tasks} navigate={navigate} />}
         {view === 'meals' && <MealsView mealsByKey={mealsByKey} setMeal={setMeal} removeMeal={removeMeal} />}
         {view === 'groceries' && <GroceriesView />}
         {view === 'pets' && <PetsView />}

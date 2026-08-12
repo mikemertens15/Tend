@@ -1,14 +1,19 @@
-/* Both skins live here as custom properties, and theme.js hands every colour
-   out as a `var(--…)` reference. That means a component never knows which skin
-   it's in — it writes `colors.ink` into an inline style exactly as before, and
-   the browser resolves it per theme.
+/* Every skin lives here as custom properties, and theme.js hands out each
+   colour as a `var(--…)` reference. A component writes `colors.ink` and never
+   knows which skin it's in.
 
-   `data-theme` is stamped on <html> by the boot script in index.html before
-   first paint, so there's always an explicit value and no flash of the wrong
-   skin. Light is the default; dark is "Direction C — wall display" from the
-   original Tend handoff, meant for an always-on kitchen tablet. */
+   Two independent dials, both stamped on <html> by the boot script in
+   index.html before first paint (so there's no flash of the wrong one):
+     data-palette  warm | calm | garden | dusk
+     data-mode     light | dark          (resolved from the OS when unset)
 
-:root {
+   Adding a palette means adding two blocks below — a light one and a dark one
+   — plus an entry in src/data/palettes.js so the picker offers it. Keep the
+   token order identical in every block; it's what makes them reviewable
+   side by side. */
+
+:root,
+:root[data-palette='warm'] {
   color-scheme: light;
 
   --c-bg: #f4ece1;
@@ -44,7 +49,7 @@
   --s-backdrop: rgba(58, 46, 37, 0.4);
 }
 
-:root[data-theme='dark'] {
+:root[data-palette='warm'][data-mode='dark'] {
   color-scheme: dark;
 
   --c-bg: #17120f;
@@ -69,7 +74,6 @@
   --c-today-bg: #2a2018;
   --c-scroll-thumb: #3d332a;
 
-  /* Nudged lighter so the traffic lights still read against a dark card. */
   --t-red: #d1795e;
   --t-amber: #d8a657;
   --t-amber-text: #d2a05a;
@@ -79,6 +83,222 @@
   --s-accent: 0 2px 10px rgba(0, 0, 0, 0.45);
   --s-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
   --s-backdrop: rgba(10, 7, 5, 0.6);
+}
+
+:root[data-palette='calm'] {
+  color-scheme: light;
+
+  --c-bg: #f4f6f8;
+  --c-card: #ffffff;
+  --c-card-border: #e4e8ee;
+  --c-nav-bar: rgba(255, 255, 255, 0.92);
+  --c-accent: #587894;
+  --c-accent-dark: #4a6880;
+  --c-on-accent: #fff;
+  --c-ink: #1f2933;
+  --c-muted: #6a7682;
+  --c-muted2: #5a6675;
+  --c-muted3: #46515d;
+  --c-faint: #a9b6c2;
+  --c-divider: #eef1f5;
+  --c-chip-bg: #e9eef3;
+  --c-input-bg: #f7f9fb;
+  --c-input-border: #dde3ea;
+  --c-track: #e6eaf0;
+  --c-star-empty: #ccd5de;
+  --c-selected: #9dbdd6;
+  --c-today-bg: #eef5fb;
+  --c-scroll-thumb: #c8d1da;
+
+  --t-red: #b05d59;
+  --t-amber: #c99a4e;
+  --t-amber-text: #a2762e;
+  --t-green: #5c7b6d;
+
+  --g-hero: linear-gradient(135deg, #5b7c99, #3f5b73);
+  --s-accent: 0 2px 8px rgba(91, 124, 153, 0.28);
+  --s-modal: 0 24px 60px rgba(20, 30, 40, 0.22);
+  --s-backdrop: rgba(31, 41, 51, 0.4);
+}
+
+:root[data-palette='calm'][data-mode='dark'] {
+  color-scheme: dark;
+
+  --c-bg: #11151a;
+  --c-card: #1a2027;
+  --c-card-border: #283039;
+  --c-nav-bar: rgba(17, 21, 26, 0.92);
+  --c-accent: #7ba3c4;
+  --c-accent-dark: #628aab;
+  --c-on-accent: #10161c;
+  --c-ink: #e8edf3;
+  --c-muted: #7b8a99;
+  --c-muted2: #9dabb9;
+  --c-muted3: #bcc7d2;
+  --c-faint: #5f6d7b;
+  --c-divider: #232b34;
+  --c-chip-bg: #262f39;
+  --c-input-bg: #161c22;
+  --c-input-border: #313b46;
+  --c-track: #262f39;
+  --c-star-empty: #3a4550;
+  --c-selected: #4a6f8d;
+  --c-today-bg: #1c2731;
+  --c-scroll-thumb: #333e49;
+
+  --t-red: #d08a83;
+  --t-amber: #d4ab68;
+  --t-amber-text: #d0a463;
+  --t-green: #8bb0a0;
+
+  --g-hero: linear-gradient(135deg, #3f5b73, #26384a);
+  --s-accent: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --s-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --s-backdrop: rgba(4, 7, 10, 0.62);
+}
+
+:root[data-palette='garden'] {
+  color-scheme: light;
+
+  --c-bg: #f1f4ed;
+  --c-card: #fdfefb;
+  --c-card-border: #e0e7d9;
+  --c-nav-bar: rgba(253, 254, 251, 0.92);
+  --c-accent: #627c50;
+  --c-accent-dark: #5c7649;
+  --c-on-accent: #fff;
+  --c-ink: #2b3327;
+  --c-muted: #6d7663;
+  --c-muted2: #5e6855;
+  --c-muted3: #495141;
+  --c-faint: #adb7a0;
+  --c-divider: #eaefe4;
+  --c-chip-bg: #e6ecdd;
+  --c-input-bg: #f7faf3;
+  --c-input-border: #dbe3d1;
+  --c-track: #e4ead9;
+  --c-star-empty: #ccd5c0;
+  --c-selected: #a8c08e;
+  --c-today-bg: #f0f7e8;
+  --c-scroll-thumb: #c7d2b8;
+
+  --t-red: #a9614b;
+  --t-amber: #cfa254;
+  --t-amber-text: #a87c2c;
+  --t-green: #577e5f;
+
+  --g-hero: linear-gradient(135deg, #6f8c5a, #4e6b40);
+  --s-accent: 0 2px 8px rgba(111, 140, 90, 0.3);
+  --s-modal: 0 24px 60px rgba(25, 35, 20, 0.24);
+  --s-backdrop: rgba(43, 51, 39, 0.42);
+}
+
+:root[data-palette='garden'][data-mode='dark'] {
+  color-scheme: dark;
+
+  --c-bg: #12160f;
+  --c-card: #1c2119;
+  --c-card-border: #2a3225;
+  --c-nav-bar: rgba(18, 22, 15, 0.92);
+  --c-accent: #8fb173;
+  --c-accent-dark: #74945b;
+  --c-on-accent: #121710;
+  --c-ink: #e9efe3;
+  --c-muted: #86937a;
+  --c-muted2: #a3b096;
+  --c-muted3: #c0cbb4;
+  --c-faint: #66735c;
+  --c-divider: #242b1f;
+  --c-chip-bg: #29311f;
+  --c-input-bg: #171c14;
+  --c-input-border: #333c2c;
+  --c-track: #29311f;
+  --c-star-empty: #414a38;
+  --c-selected: #5d7a45;
+  --c-today-bg: #212a1a;
+  --c-scroll-thumb: #38402f;
+
+  --t-red: #cf8a72;
+  --t-amber: #d3ab63;
+  --t-amber-text: #cea55e;
+  --t-green: #8fb992;
+
+  --g-hero: linear-gradient(135deg, #4e6b40, #2f4327);
+  --s-accent: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --s-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --s-backdrop: rgba(6, 9, 5, 0.62);
+}
+
+:root[data-palette='dusk'] {
+  color-scheme: light;
+
+  --c-bg: #f4f2f8;
+  --c-card: #fffdff;
+  --c-card-border: #e7e2ef;
+  --c-nav-bar: rgba(255, 253, 255, 0.92);
+  --c-accent: #7a5ba6;
+  --c-accent-dark: #664a8c;
+  --c-on-accent: #fff;
+  --c-ink: #2c2436;
+  --c-muted: #777183;
+  --c-muted2: #676174;
+  --c-muted3: #514a5d;
+  --c-faint: #b3abc0;
+  --c-divider: #efebf5;
+  --c-chip-bg: #ebe5f3;
+  --c-input-bg: #f9f7fc;
+  --c-input-border: #e0d9ea;
+  --c-track: #e8e2f0;
+  --c-star-empty: #d2c9df;
+  --c-selected: #b79ad6;
+  --c-today-bg: #f6f0fd;
+  --c-scroll-thumb: #cdc4da;
+
+  --t-red: #b05a69;
+  --t-amber: #c9994f;
+  --t-amber-text: #9f7429;
+  --t-green: #5c7d71;
+
+  --g-hero: linear-gradient(135deg, #7a5ba6, #543a78);
+  --s-accent: 0 2px 8px rgba(122, 91, 166, 0.3);
+  --s-modal: 0 24px 60px rgba(30, 20, 45, 0.24);
+  --s-backdrop: rgba(44, 36, 54, 0.42);
+}
+
+:root[data-palette='dusk'][data-mode='dark'] {
+  color-scheme: dark;
+
+  --c-bg: #15121b;
+  --c-card: #1f1a27;
+  --c-card-border: #2e2739;
+  --c-nav-bar: rgba(21, 18, 27, 0.92);
+  --c-accent: #a382ce;
+  --c-accent-dark: #8a68b4;
+  --c-on-accent: #14101a;
+  --c-ink: #ece7f4;
+  --c-muted: #8c81a0;
+  --c-muted2: #aca1bf;
+  --c-muted3: #c8bfd8;
+  --c-faint: #6b6180;
+  --c-divider: #272031;
+  --c-chip-bg: #2d2539;
+  --c-input-bg: #1a1621;
+  --c-input-border: #3a3149;
+  --c-track: #2d2539;
+  --c-star-empty: #453b56;
+  --c-selected: #6d519a;
+  --c-today-bg: #251d33;
+  --c-scroll-thumb: #3d3450;
+
+  --t-red: #d0808f;
+  --t-amber: #d2a765;
+  --t-amber-text: #cda261;
+  --t-green: #86ada0;
+
+  --g-hero: linear-gradient(135deg, #543a78, #34204d);
+  --s-accent: 0 2px 10px rgba(0, 0, 0, 0.45);
+  --s-modal: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --s-backdrop: rgba(8, 5, 12, 0.62);
 }
 
 * { box-sizing: border-box; }
@@ -109,8 +329,8 @@ button {
   padding: 0;
 }
 
-/* Dark-skin form controls: without this the browser paints its own light
-   chrome for date/number pickers and placeholder text. */
+/* Dark skins otherwise get the browser's own light chrome for date and number
+   pickers, and for placeholder text. */
 input, textarea, select {
   color-scheme: inherit;
 }
@@ -129,4 +349,13 @@ input, textarea, select {
    indicator on notched devices. */
 .tend-safe-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Kitchen display: no text selection, no tap highlight, no accidental
+   pull-to-refresh on a wall-mounted tablet nobody is meant to be scrolling. */
+.tend-hub {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior: none;
 }

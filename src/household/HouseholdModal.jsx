@@ -3,14 +3,15 @@ import { colors, tone, shadows, fonts } from '../theme';
 import { Avatar } from '../components/ui';
 import { useHousehold } from './HouseholdProvider';
 import { useAuth } from '../auth/AuthProvider';
-import { useTheme, THEMES } from '../useTheme';
+import { useTheme } from '../useTheme';
+import { PALETTES, MODES } from '../data/palettes';
 
 // Account + household management, opened from the TopNav avatar: share the
 // invite code, see/add members, and sign out.
 export function HouseholdModal({ onClose }) {
   const { household, members, addMember, currentMember, settings, saveSettings } = useHousehold();
   const { signOut, setPassword } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { palette, mode, resolvedMode, setPalette, setMode } = useTheme();
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -105,30 +106,108 @@ export function HouseholdModal({ onClose }) {
         </div>
 
         {/* Appearance */}
-        <Label>Appearance</Label>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
-          {THEMES.map(([key, label, blurb]) => {
-            const active = theme === key;
+        <Label>Colours</Label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
+          {PALETTES.map((p) => {
+            const active = palette === p.key;
+            const swatch = p.swatch[resolvedMode];
             return (
               <button
-                key={key}
-                onClick={() => setTheme(key)}
+                key={p.key}
+                onClick={() => setPalette(p.key)}
                 aria-pressed={active}
                 style={{
-                  flex: 1,
-                  padding: '12px 14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 11,
+                  padding: '11px 13px',
                   borderRadius: 14,
                   textAlign: 'left',
                   background: active ? colors.chipBg : colors.inputBg,
                   border: `1px solid ${active ? colors.selected : colors.cardBorder}`,
                 }}
               >
-                <div style={{ font: `600 13px ${fonts.sans}`, color: colors.ink }}>{label}</div>
-                <div style={{ font: `400 11px/1.4 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>{blurb}</div>
+                {/* Real hexes, so you see the palette rather than a name for it. */}
+                <span aria-hidden="true" style={{ display: 'flex', flexShrink: 0 }}>
+                  {swatch.map((c, i) => (
+                    <span
+                      key={c}
+                      style={{
+                        width: 15,
+                        height: 24,
+                        background: c,
+                        borderRadius: i === 0 ? '7px 0 0 7px' : i === swatch.length - 1 ? '0 7px 7px 0' : 0,
+                        border: `1px solid ${colors.cardBorder}`,
+                        borderLeftWidth: i === 0 ? 1 : 0,
+                      }}
+                    />
+                  ))}
+                </span>
+                <span style={{ minWidth: 0 }}>
+                  <span style={{ display: 'block', font: `600 12.5px ${fonts.sans}`, color: colors.ink }}>
+                    {p.label}
+                  </span>
+                  <span style={{ display: 'block', font: `400 10.5px ${fonts.sans}`, color: colors.muted }}>
+                    {p.blurb}
+                  </span>
+                </span>
               </button>
             );
           })}
         </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 24 }}>
+          {MODES.map(([key, label]) => {
+            const active = mode === key;
+            return (
+              <button
+                key={key}
+                onClick={() => setMode(key)}
+                aria-pressed={active}
+                style={{
+                  flex: 1,
+                  padding: '9px 12px',
+                  borderRadius: 20,
+                  background: active ? colors.accent : colors.inputBg,
+                  border: `1px solid ${active ? colors.accent : colors.cardBorder}`,
+                  color: active ? colors.onAccent : colors.muted2,
+                  font: `${active ? 600 : 500} 12.5px ${fonts.sans}`,
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Kitchen display */}
+        <Label>Kitchen display</Label>
+        <a
+          href="#/hub"
+          onClick={onClose}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 11,
+            padding: '12px 14px',
+            borderRadius: 12,
+            marginBottom: 24,
+            textDecoration: 'none',
+            background: colors.inputBg,
+            border: `1px solid ${colors.cardBorder}`,
+          }}
+        >
+          <span style={{ fontSize: 15, lineHeight: 1.2 }}>📺</span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', font: `600 13px ${fonts.sans}`, color: colors.ink }}>
+              Open the wall display
+            </span>
+            <span style={{ display: 'block', font: `400 11.5px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
+              Full-screen and readable across a room, for a mounted tablet or TV. Setup instructions live on the
+              Calendar page.
+            </span>
+          </span>
+        </a>
 
         {/* Daily digest */}
         <Label>Daily digest</Label>
