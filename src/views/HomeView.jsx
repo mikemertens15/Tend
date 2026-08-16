@@ -9,8 +9,22 @@ import { targetTone } from '../data/useGoals';
 import { usePets } from '../data/usePets';
 import { ROOMS } from '../data/rooms';
 import { buildNudges } from '../data/nudges';
+import { buildCatchUp } from '../data/catchup';
+import { CatchUpCard } from '../components/CatchUpCard';
 
-export function HomeView({ tasks, systems, mealsByKey = {}, goals = [], week, onToggle, navigate }) {
+export function HomeView({
+  tasks,
+  systems,
+  mealsByKey = {},
+  goals = [],
+  week,
+  onToggle,
+  navigate,
+  awayDays = 0,
+  catchUpDismissed = false,
+  onDismissCatchUp,
+  onRollForward,
+}) {
   const narrow = useIsNarrow();
   const { order, currentMember } = useHousehold();
   const { items: hobbies } = useCollection(ALL_HOBBY_DOMAINS);
@@ -38,9 +52,14 @@ export function HomeView({ tasks, systems, mealsByKey = {}, goals = [], week, on
 
   const inProgress = hobbies.filter(isUnderway).slice(0, 5);
 
+  // Were you gone long enough that the overdue pile needs explaining rather
+  // than just listing? Null when you've been here all along, or when nothing
+  // slipped while you were away.
+  const catchUp = catchUpDismissed ? null : buildCatchUp({ tasks, awayDays });
+
   // Everything that's actually slipping, gathered from the sections that would
   // otherwise each need visiting to find out.
-  const nudges = buildNudges({ tasks, systems, pets });
+  const nudges = buildNudges({ tasks, systems, pets, catchingUp: Boolean(catchUp) });
 
   // Which rooms still want something, busiest first.
   const busyRooms = ROOMS.map(([key, label, icon]) => ({
@@ -62,6 +81,19 @@ export function HomeView({ tasks, systems, mealsByKey = {}, goals = [], week, on
 
   return (
     <div>
+      {/* the door back in, before anything that counts what you missed */}
+      {catchUp && (
+        <CatchUpCard
+          catchUp={catchUp}
+          navigate={navigate}
+          onDismiss={onDismissCatchUp}
+          onRoll={() => {
+            onRollForward?.(catchUp.rollIds);
+            onDismissCatchUp?.();
+          }}
+        />
+      )}
+
       {/* hero + family */}
       <div
         style={{

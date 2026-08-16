@@ -3,6 +3,7 @@ import { colors, fonts } from './theme';
 import { getWeek } from './dates';
 import { useHashRoute } from './useHashRoute';
 import { useIsPhone } from './useMediaQuery';
+import { useLastSeen } from './useLastSeen';
 import { useTasks } from './data/useTasks';
 import { useSystems } from './data/useSystems';
 import { useMeals } from './data/useMeals';
@@ -60,13 +61,23 @@ function Dashboard() {
   // and a refresh stays where you were.
   const [view, navigate] = useHashRoute('home');
   const phone = useIsPhone();
+  const { session } = useAuth();
   const [modalOpen, setModalOpen] = useState(false);
   const [householdOpen, setHouseholdOpen] = useState(false);
+  // Held here rather than in HomeView so that dismissing the welcome-back card
+  // and then wandering off to Chores doesn't bring it straight back — Home
+  // unmounts when you navigate away from it.
+  const [catchUpDismissed, setCatchUpDismissed] = useState(false);
+
+  // How long since this device last saw the dashboard. The kitchen display is
+  // excluded: it's signed in permanently and would otherwise report a visit
+  // every minute of every day.
+  const awayDays = useLastSeen({ userId: session?.user?.id, active: view !== 'hub' });
 
   // Only the hooks Home actually summarises live up here. Sections that stand
   // alone — groceries, pets, facts, hobbies — own their data, so opening the
   // app doesn't fetch and subscribe to every table in the database.
-  const { tasks, toggle, addTask } = useTasks();
+  const { tasks, toggle, addTask, rollForward } = useTasks();
   const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems();
   const { mealsByKey, setMeal, removeMeal } = useMeals();
   const goals = useGoals();
@@ -116,6 +127,10 @@ function Dashboard() {
             week={week}
             onToggle={toggle}
             navigate={navigate}
+            awayDays={awayDays}
+            catchUpDismissed={catchUpDismissed}
+            onDismissCatchUp={() => setCatchUpDismissed(true)}
+            onRollForward={rollForward}
           />
         )}
         {view === 'chores' && <ChoresView tasks={tasks} onToggle={toggle} onAdd={() => setModalOpen(true)} />}

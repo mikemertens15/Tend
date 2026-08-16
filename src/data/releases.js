@@ -8,6 +8,22 @@
 
 export const RELEASES = [
   {
+    version: '0.11.0',
+    date: '2026-08-16',
+    name: 'Right where you left it',
+    notes: [
+      [
+        'added',
+        "Come back after a few days and Tend now says so, instead of showing you a wall of red. Anything on a rhythm of a week or less — the dishes, the bins — moves to today in one tap, because you don't sweep the floor twice for having skipped Tuesday. It doesn't tick them off; they didn't happen. It just stops pretending you owe four of them.",
+      ],
+      [
+        'added',
+        "What genuinely waited still says so. The furnace filter, the fortnightly jobs and anything one-off keep their real dates — that's a fact about your house, not a mood.",
+      ],
+      ['changed', 'While the welcome back is up, "Needs you" stops repeating the overdue count underneath it.'],
+    ],
+  },
+  {
     version: '0.10.1',
     date: '2026-08-12',
     name: 'Where did it go',

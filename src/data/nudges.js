@@ -15,11 +15,15 @@ const URGENCY = { late: 0, soon: 1 };
 // "over budget", and loading the whole shopping hook on the dashboard to find
 // that out costs four queries and a realtime channel for one line of text.
 // Spending lives on the Groceries screen, where you're already thinking about it.
-export function buildNudges({ tasks = [], systems = [], pets = null }) {
+// `catchingUp` means the welcome-back card is already on screen and has said
+// its piece about overdue chores, in kinder words and with a button that
+// actually helps. Repeating it here as a red count directly underneath would
+// undo the whole point of it.
+export function buildNudges({ tasks = [], systems = [], pets = null, catchingUp = false }) {
   const out = [];
 
   const overdue = tasks.filter((t) => !t.done && t.dueType === 'overdue');
-  if (overdue.length > 0) {
+  if (overdue.length > 0 && !catchingUp) {
     out.push({
       key: 'chores-overdue',
       level: 'late',

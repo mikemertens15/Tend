@@ -165,7 +165,26 @@ export function useTasks() {
     [fetchTasks],
   );
 
-  return { tasks, toggle, addTask, removeTask };
+  // Re-date overdue work to today. Used by the catch-up card on the dashboard
+  // when a rhythm has been broken by an absence.
+  //
+  // Deliberately not "mark them done": they weren't done, and recording work
+  // that never happened would corrupt the one thing this app is for. Rolling
+  // says something different and true — this recurs, the missed beat is gone,
+  // the next one is now.
+  const rollForward = useCallback(
+    async (ids) => {
+      if (!ids?.length) return;
+      const today = dayStr();
+      const set = new Set(ids);
+      setRows((rs) => rs.map((r) => (set.has(r.id) ? { ...r, due_on: today } : r)));
+      await supabase.from('tasks').update({ due_on: today }).in('id', ids);
+      fetchTasks();
+    },
+    [fetchTasks],
+  );
+
+  return { tasks, toggle, addTask, removeTask, rollForward };
 }
 
 // Step forward by the repeat interval until the date is actually ahead of us,

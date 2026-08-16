@@ -129,6 +129,44 @@ for an optional email. **The digest is dormant** — it sends nothing until a
 created. Deploying the function alone does nothing; the steps are in a comment
 at the bottom of the file.
 
+## Coming back
+
+Tend is for people with lives, so it will regularly go unopened for a few days.
+The naive result is punishing: open it on Thursday and every chore since Sunday
+is sitting there in red, each labelled with exactly how late you are. That's a
+scoreboard of failures, and the honest response to one is to close the app.
+
+`data/catchup.js` handles the return, on the same terms as `nudges.js` — a pure
+function over already-loaded data. The idea it turns on is that **most of those
+rows don't represent work that's owed**. You don't sweep the floor twice
+because you skipped Tuesday; the floor needs sweeping once, today. So overdue
+work splits in two:
+
+- **Rhythm rolls.** A repeat of a week or less, at least two days late, is a
+  dropped beat rather than a debt. The card offers to re-date the lot to today
+  in one tap. It does *not* mark them done — they weren't, and recording work
+  that never happened would corrupt the only thing the app is actually for.
+- **Everything else stands.** Fortnightly and longer upkeep, and every one-off,
+  stays exactly as late as it is. A missed furnace filter is a real fact about
+  your house, and softening it would be lying to you.
+
+Three days away is the threshold (`AWAY_DAYS`); below that a gap is just a
+weekend and needs no ceremony. `useLastSeen.js` supplies the absence, stored per
+device in localStorage — one fewer migration, and "this screen hasn't been
+looked at in a while" is arguably the truer reading. The kitchen display never
+stamps it: that tablet is signed in permanently and would otherwise report a
+visit every minute of every day, so the absence would never fire anywhere in the
+household. Swapping in a `last_seen_at` column on `household_members` is a
+two-line change behind the same hook if cross-device ever matters.
+
+While the card is up it suppresses the "Needs you" overdue-chores nudge —
+repeating the same count in red immediately underneath would undo the point of
+it.
+
+Deliberately absent: streaks. They're the most reliable way an app like this
+becomes a source of shame, and the whole section above is an argument against
+them.
+
 ## Where things live
 
 ```
@@ -140,10 +178,12 @@ src/
   useTheme.js        # skin switching + persistence
   dates.js           # week / greeting / "today" helpers
   useHashRoute.js    # dependency-free hash router
+  useLastSeen.js     # how long since this device saw the dashboard
   lib/supabase.js    # configured Supabase browser client
   auth/              # AuthProvider, SignIn, ResetPassword
   household/         # HouseholdProvider (members, settings), Onboarding, modal
-  data/              # one hook per section + collections.js, cadence.js, releases.js
+  data/              # one hook per section + collections.js, cadence.js,
+                     #   nudges.js, catchup.js, releases.js
   components/        # nav, modals, shared UI
   views/             # one per section
 public/
