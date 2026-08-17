@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { colors, fonts } from './theme';
 import { getWeek } from './dates';
 import { useHashRoute } from './useHashRoute';
 import { useIsPhone } from './useMediaQuery';
 import { useLastSeen } from './useLastSeen';
+import { useSections } from './data/useSections';
 import { useTasks } from './data/useTasks';
 import { useSystems } from './data/useSystems';
 import { useMeals } from './data/useMeals';
@@ -74,20 +75,40 @@ function Dashboard() {
   // every minute of every day.
   const awayDays = useLastSeen({ userId: session?.user?.id, active: view !== 'hub' });
 
-  // Only the hooks Home actually summarises live up here. Sections that stand
-  // alone — groceries, pets, facts, hobbies — own their data, so opening the
-  // app doesn't fetch and subscribe to every table in the database.
-  const { tasks, toggle, addTask, rollForward } = useTasks();
-  const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems();
-  const { mealsByKey, setMeal, removeMeal } = useMeals();
-  const goals = useGoals();
-
-  // Computed once per mount — the real current week drives greeting + calendar.
-  const week = useMemo(() => getWeek(), []);
+  // Which sections this household kept. Everything below reads from it: what's
+  // in the nav, what routes resolve, and which hooks bother to fetch.
+  const { isOn } = useSections();
 
   // A hobby section route ('games', 'books', …) renders the shared collection
   // view; anything unrecognised falls through to Home.
   const hobbySection = sectionByKey(view);
+
+  // A switched-off section shouldn't stay reachable through an old deep link, a
+  // bookmark, or a tab left open while someone else changed the settings.
+  // `releases` and `hub` aren't nav sections and are always allowed.
+  const reachable =
+    view === 'hub' ||
+    view === 'releases' ||
+    (hobbySection ? isOn('hobbies') : isOn(view));
+  useEffect(() => {
+    if (!reachable) navigate('home');
+  }, [reachable, navigate]);
+  // Render Home immediately rather than flashing a blank frame while the hash
+  // catches up.
+  const active = reachable ? view : 'home';
+
+  // Only the hooks Home actually summarises live up here. Sections that stand
+  // alone — groceries, facts, hobbies — own their data, so opening the app
+  // doesn't fetch and subscribe to every table in the database. The four here
+  // get told whether their section is on, so switching one off really does stop
+  // the queries rather than just hiding the card.
+  const { tasks, toggle, addTask, rollForward } = useTasks();
+  const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems({ enabled: isOn('systems') });
+  const { mealsByKey, setMeal, removeMeal } = useMeals({ enabled: isOn('meals') });
+  const goals = useGoals({ enabled: isOn('goals') });
+
+  // Computed once per mount — the real current week drives greeting + calendar.
+  const week = useMemo(() => getWeek(), []);
 
   // The kitchen display replaces the whole app chrome — no nav, no add button,
   // nothing to accidentally press while reaching past it for the kettle.
@@ -96,9 +117,9 @@ function Dashboard() {
   return (
     <div style={{ minHeight: '100vh', background: colors.bg }}>
       <TopNav
-        view={view}
+        view={active}
         setView={navigate}
-        hobbyRoute={Boolean(hobbySection)}
+        hobbyRoute={Boolean(hobbySection) && reachable}
         onAdd={() => setModalOpen(true)}
         onOpenHousehold={() => setHouseholdOpen(true)}
       />
@@ -114,11 +135,11 @@ function Dashboard() {
       >
         {/* Keyed so switching sections remounts: the view holds per-section
             state (selected domain, owner filter) that must not carry over. */}
-        {hobbySection && (
+        {hobbySection && reachable && (
           <CollectionView key={hobbySection.key} section={hobbySection} navigate={navigate} />
         )}
-        {view === 'hobbies' && <HobbiesView navigate={navigate} />}
-        {view === 'home' && (
+        {active === 'hobbies' && <HobbiesView navigate={navigate} />}
+        {active === 'home' && (
           <HomeView
             tasks={tasks}
             systems={systems}
@@ -133,8 +154,8 @@ function Dashboard() {
             onRollForward={rollForward}
           />
         )}
-        {view === 'chores' && <ChoresView tasks={tasks} onToggle={toggle} onAdd={() => setModalOpen(true)} />}
-        {view === 'systems' && (
+        {active === 'chores' && <ChoresView tasks={tasks} onToggle={toggle} onAdd={() => setModalOpen(true)} />}
+        {active === 'systems' && (
           <SystemsView
             systems={systems}
             onAdd={addSystem}
@@ -143,13 +164,13 @@ function Dashboard() {
             onMarkDone={markDone}
           />
         )}
-        {view === 'calendar' && <CalendarView tasks={tasks} navigate={navigate} />}
-        {view === 'meals' && <MealsView mealsByKey={mealsByKey} setMeal={setMeal} removeMeal={removeMeal} />}
-        {view === 'groceries' && <GroceriesView />}
-        {view === 'pets' && <PetsView />}
-        {view === 'facts' && <HouseFactsView />}
-        {view === 'releases' && <ReleasesView />}
-        {view === 'goals' && (
+        {active === 'calendar' && <CalendarView tasks={tasks} navigate={navigate} />}
+        {active === 'meals' && <MealsView mealsByKey={mealsByKey} setMeal={setMeal} removeMeal={removeMeal} />}
+        {active === 'groceries' && <GroceriesView />}
+        {active === 'pets' && <PetsView />}
+        {active === 'facts' && <HouseFactsView />}
+        {active === 'releases' && <ReleasesView />}
+        {active === 'goals' && (
           <GoalsView
             active={goals.active}
             done={goals.done}
@@ -162,7 +183,7 @@ function Dashboard() {
         )}
       </main>
 
-      {phone && <MobileNav view={view} setView={navigate} hobbyRoute={Boolean(hobbySection)} />}
+      {phone && <MobileNav view={active} setView={navigate} hobbyRoute={Boolean(hobbySection) && reachable} />}
 
       {modalOpen && <AddTaskModal onClose={() => setModalOpen(false)} onAdd={addTask} />}
       {householdOpen && <HouseholdModal onClose={() => setHouseholdOpen(false)} />}

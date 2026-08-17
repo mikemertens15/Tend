@@ -5,6 +5,8 @@ import { useHousehold } from './HouseholdProvider';
 import { useAuth } from '../auth/AuthProvider';
 import { useTheme } from '../useTheme';
 import { PALETTES, MODES } from '../data/palettes';
+import { useSections } from '../data/useSections';
+import { OPTIONAL_SECTIONS, SECTION_BLURBS } from '../nav';
 
 // Account + household management, opened from the TopNav avatar: share the
 // invite code, see/add members, and sign out.
@@ -12,6 +14,7 @@ export function HouseholdModal({ onClose }) {
   const { household, members, addMember, currentMember, settings, saveSettings } = useHousehold();
   const { signOut, setPassword } = useAuth();
   const { palette, mode, resolvedMode, setPalette, setMode } = useTheme();
+  const { isOn, setEnabled } = useSections();
   const [newName, setNewName] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -103,6 +106,48 @@ export function HouseholdModal({ onClose }) {
         </div>
         <div style={{ font: `400 13px ${fonts.sans}`, color: colors.muted, marginBottom: 22 }}>
           {members.length} {members.length === 1 ? 'person' : 'people'}
+        </div>
+
+        {/* What this household actually uses. Home and Chores aren't listed —
+            they're the app, not features of it. */}
+        <Label>What Tend looks after</Label>
+        <div style={{ font: `400 12px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: -4, marginBottom: 10 }}>
+          Switch off anything you don't want. It leaves the menu, and Tend stops loading it.
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
+          {OPTIONAL_SECTIONS.map(([key, label, icon]) => {
+            const on = isOn(key);
+            return (
+              <button
+                key={key}
+                onClick={() => setEnabled(key, !on)}
+                aria-pressed={on}
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  gap: 10,
+                  padding: '11px 13px',
+                  borderRadius: 14,
+                  textAlign: 'left',
+                  background: on ? colors.chipBg : colors.inputBg,
+                  border: `1px solid ${on ? colors.selected : colors.cardBorder}`,
+                  opacity: on ? 1 : 0.55,
+                }}
+              >
+                <span aria-hidden="true" style={{ fontSize: 15, lineHeight: 1.2 }}>
+                  {icon}
+                </span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: 'block', font: `600 12.5px ${fonts.sans}`, color: colors.ink }}>
+                    {label}
+                  </span>
+                  <span style={{ display: 'block', font: `400 10.5px/1.4 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
+                    {SECTION_BLURBS[key]}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Appearance */}

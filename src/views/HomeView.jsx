@@ -11,6 +11,7 @@ import { ROOMS } from '../data/rooms';
 import { buildNudges } from '../data/nudges';
 import { buildCatchUp } from '../data/catchup';
 import { CatchUpCard } from '../components/CatchUpCard';
+import { useSections } from '../data/useSections';
 
 export function HomeView({
   tasks,
@@ -27,10 +28,14 @@ export function HomeView({
 }) {
   const narrow = useIsNarrow();
   const { order, currentMember } = useHousehold();
-  const { items: hobbies } = useCollection(ALL_HOBBY_DOMAINS);
+  const { isOn } = useSections();
+  // Switching a section off has to take its dashboard card with it. A card for
+  // something that's no longer in the nav is a dead end, and the summary is
+  // half the reason you'd want the section at all.
+  const { items: hobbies } = useCollection(ALL_HOBBY_DOMAINS, { enabled: isOn('hobbies') });
   // Only Home and the Pets section load this, so the rest of the app doesn't
   // pay for three tables it isn't showing.
-  const pets = usePets();
+  const pets = usePets({ enabled: isOn('pets') });
   const greetingName = currentMember?.name || 'there';
   const today = week.days[week.todayIndex].date;
 
@@ -195,9 +200,11 @@ export function HomeView({
       <Card style={{ padding: '22px 26px', marginBottom: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
           <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Up next</div>
-          <button onClick={() => navigate('calendar')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
-            See the week
-          </button>
+          {isOn('calendar') && (
+            <button onClick={() => navigate('calendar')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
+              See the week
+            </button>
+          )}
         </div>
         {upNext.map((t) => (
           <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 0', borderTop: `1px solid ${colors.divider}` }}>
@@ -222,7 +229,7 @@ export function HomeView({
       </Card>
 
       {/* rooms + systems summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 22 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: narrow || !isOn('systems') ? '1fr' : '1fr 1fr', gap: 22 }}>
         <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('chores')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
             <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Room by room</div>
@@ -263,6 +270,7 @@ export function HomeView({
           )}
         </Card>
 
+        {isOn('systems') && (
         <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('systems')}>
           <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink, marginBottom: 14 }}>House health</div>
           {systems.length === 0 ? (
@@ -279,10 +287,20 @@ export function HomeView({
             ))
           )}
         </Card>
+        )}
       </div>
 
       {/* dinner plan + goals */}
-      <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : '1fr 1fr', gap: 22, marginTop: 22 }}>
+      {(isOn('meals') || isOn('goals')) && (
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: narrow || !isOn('meals') || !isOn('goals') ? '1fr' : '1fr 1fr',
+          gap: 22,
+          marginTop: 22,
+        }}
+      >
+        {isOn('meals') && (
         <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('meals')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
             <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>On the menu</div>
@@ -302,7 +320,9 @@ export function HomeView({
             </div>
           ))}
         </Card>
+        )}
 
+        {isOn('goals') && (
         <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('goals')}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
             <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Goals in motion</div>
@@ -328,7 +348,9 @@ export function HomeView({
             ))
           )}
         </Card>
+        )}
       </div>
+      )}
 
       {/* the cats — only when there are some */}
       {pets.pets.length > 0 && (
@@ -368,6 +390,7 @@ export function HomeView({
       )}
 
       {/* a little life beyond the house */}
+      {isOn('hobbies') && (
       <Card style={{ padding: '22px 26px', marginTop: 22 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: inProgress.length ? 14 : 0 }}>
           <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>On the go</div>
@@ -403,6 +426,7 @@ export function HomeView({
           ))
         )}
       </Card>
+      )}
     </div>
   );
 }

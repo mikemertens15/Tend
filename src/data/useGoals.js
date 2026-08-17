@@ -6,9 +6,10 @@ import { parseDay, daysUntil, monthDay, dayStr } from '../dates';
 // Supabase-backed store for life goals — personal (owner set) or family-wide
 // (owner null). Household-scoped + realtime like the other hooks. Active goals
 // come back soonest-target-first; finished ones most-recently-done-first.
-export function useGoals() {
+// `enabled: false` parks the hook — see the note in useSystems.
+export function useGoals({ enabled = true } = {}) {
   const { household, members } = useHousehold();
-  const householdId = household?.id ?? null;
+  const householdId = enabled ? (household?.id ?? null) : null;
   const [rows, setRows] = useState([]);
 
   const nameById = useMemo(() => {

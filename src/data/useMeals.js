@@ -8,9 +8,10 @@ import { getWeek, dayStr } from '../dates';
 // without refetching, and the home card always has today covered. At most one
 // row exists per household/day/slot — saves go through an upsert on that key,
 // so editing a day replaces the meal instead of stacking duplicates.
-export function useMeals() {
+// `enabled: false` parks the hook — see the note in useSystems.
+export function useMeals({ enabled = true } = {}) {
   const { household, members } = useHousehold();
-  const householdId = household?.id ?? null;
+  const householdId = enabled ? (household?.id ?? null) : null;
   const [rows, setRows] = useState([]);
 
   const nameById = useMemo(() => {

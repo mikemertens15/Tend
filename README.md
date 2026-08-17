@@ -129,6 +129,51 @@ for an optional email. **The digest is dormant** — it sends nothing until a
 created. Deploying the function alone does nothing; the steps are in a comment
 at the bottom of the file.
 
+## Sections you can switch off
+
+Tend keeps growing outward, and an app that shows everyone everything eventually
+shows most people mostly noise. So the section list is a household preference:
+**Household & account → What Tend looks after**.
+
+Home and Chores are the exceptions (`CORE_SECTIONS` in `nav.js`). Home is the
+landing route and the fallback for anything unrecognised, and chores are the
+question the whole app was built to answer — a Tend without them isn't a smaller
+Tend, it's a different program. Everything else can go.
+
+Switching a section off isn't cosmetic, which is the part worth getting right:
+
+- it leaves the desktop nav and the phone's More sheet, and a nav **group** that
+  empties out goes with it — a "Life" heading over nothing is worse than no
+  heading;
+- the phone tab bar backfills in nav order, so turning off Groceries pulls the
+  next section up rather than leaving three tabs and a gap;
+- its route stops resolving, so an old deep link or a bookmark lands on Home
+  instead of a section that isn't there any more;
+- its dashboard card disappears, and the grid it lived in collapses to full
+  width rather than leaving a hole;
+- and **the hook behind it stops fetching and drops its realtime channel.**
+  Measured on the dashboard: everything on is 8 tables and 6 channels; with
+  Meals, Pets, Systems, Hobbies and Goals off it's one of each.
+
+That last one only works because each section already owns its data. The hooks
+Home summarises take an `enabled` option that resolves `householdId` to null,
+which every guard in them already checks — the same path as "not signed in yet",
+so there was no new branch to get wrong.
+
+It's stored as `disabledSections` in the `households.settings` jsonb — no
+migration, no new table — and it's a **deny** list on purpose. A section added in
+a later release is then visible by default, which is the right failure: a new
+feature nobody can find is a support problem, and switching it off is one tap.
+
+It's a household setting rather than a personal one, because these are shared
+screens in a shared house and a section half the family can see is a
+conversation waiting to happen. Genuinely personal preferences stay personal —
+which skin you're in, and how long since *this device* saw the dashboard.
+
+Not done yet: first-run doesn't ask. New households get everything and trim from
+the panel. Asking during onboarding needs the picker to run before
+`create_household`, which is an RPC, so it's a migration rather than a screen.
+
 ## Coming back
 
 Tend is for people with lives, so it will regularly go unopened for a few days.

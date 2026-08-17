@@ -8,9 +8,12 @@ import { dueStatus, intervalLabel } from './cadence';
 // Same shape as the other data hooks: household-scoped rows, realtime sync.
 // Each row's tone/status/detail is derived from last_done_on + interval_days,
 // and the list comes back sorted most-urgent-first.
-export function useSystems() {
+// `enabled: false` (the household switched this section off) parks the hook:
+// no fetch, no realtime channel. It works by leaving householdId null, which
+// every guard below already checks — the same path as "not signed in yet".
+export function useSystems({ enabled = true } = {}) {
   const { household } = useHousehold();
-  const householdId = household?.id ?? null;
+  const householdId = enabled ? (household?.id ?? null) : null;
   const [rows, setRows] = useState([]);
 
   const fetchSystems = useCallback(async () => {

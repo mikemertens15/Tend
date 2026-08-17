@@ -2,12 +2,14 @@ import { colors, shadows, fonts } from '../theme';
 import { Avatar } from './ui';
 import { useHousehold } from '../household/HouseholdProvider';
 import { useIsPhone } from '../useMediaQuery';
-import { NAV_GROUPS } from '../nav';
+import { useSections } from '../data/useSections';
 import { BUILD } from '../data/releases';
 
 export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
   const { currentMember } = useHousehold();
   const phone = useIsPhone();
+  // Only the sections this household kept.
+  const { groups } = useSections();
 
   return (
     <div
@@ -61,7 +63,7 @@ export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
               msOverflowStyle: 'none',
             }}
           >
-            {NAV_GROUPS.map((group, gi) => (
+            {groups.map((group, gi) => (
               <div key={group.label ?? 'home'} style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
                 {gi > 0 && (
                   <span

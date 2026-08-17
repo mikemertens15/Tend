@@ -56,9 +56,12 @@ export const CARE_SUGGESTIONS = [
 // visits without pulling the whole history onto a phone.
 const LOG_WINDOW_DAYS = 400;
 
-export function usePets() {
+// `enabled: false` parks the hook — see the note in useSystems. The dashboard
+// passes it, because Home loads pets for its own card rather than waiting to be
+// routed at the Pets section.
+export function usePets({ enabled = true } = {}) {
   const { household, members } = useHousehold();
-  const householdId = household?.id ?? null;
+  const householdId = enabled ? (household?.id ?? null) : null;
   const [pets, setPets] = useState([]);
   const [care, setCare] = useState([]);
   const [log, setLog] = useState([]);

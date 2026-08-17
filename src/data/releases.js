@@ -8,6 +8,23 @@
 
 export const RELEASES = [
   {
+    version: '0.12.0',
+    date: '2026-08-16',
+    name: 'Only what you use',
+    notes: [
+      [
+        'added',
+        "Tend does a lot now, and not all of it is for everyone. Under your household settings, \"What Tend looks after\" switches off the sections you don't want — Meals, Pets, Systems, Facts, whichever. Home and Chores stay; they're the app rather than features of it.",
+      ],
+      [
+        'added',
+        "Switching one off actually removes it. It leaves the menu, its page stops opening, its card leaves the dashboard, and Tend stops loading its data at all — so a household that doesn't keep animals isn't quietly reading three pet tables every time someone opens the app.",
+      ],
+      ['changed', 'The phone tab bar fills the gap. Turn off Groceries and the next section moves up instead of leaving a hole.'],
+      ['changed', "Anything added in a future release shows up switched on, so you'll see it — and can switch it off in one tap."],
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-08-16',
     name: 'Right where you left it',

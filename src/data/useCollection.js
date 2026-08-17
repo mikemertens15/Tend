@@ -23,9 +23,10 @@ const COLUMNS = [
   'finished_on',
 ];
 
-export function useCollection(domains) {
+// `enabled: false` parks the hook — see the note in useSystems.
+export function useCollection(domains, { enabled = true } = {}) {
   const { household, members } = useHousehold();
-  const householdId = household?.id ?? null;
+  const householdId = enabled ? (household?.id ?? null) : null;
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 

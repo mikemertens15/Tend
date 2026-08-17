@@ -1,15 +1,17 @@
 import { useState } from 'react';
 import { colors, shadows, fonts } from '../theme';
-import { NAV_GROUPS, NAV_ITEMS, PHONE_TABS } from '../nav';
+import { NAV_ITEMS } from '../nav';
+import { useSections } from '../data/useSections';
 
 // Phone navigation. The top bar's inline nav side-scrolled, which meant half
 // the app was hidden behind a swipe nobody knew was there. Four fixed tabs and
 // a More sheet puts everything one tap from the thumb instead.
 export function MobileNav({ view, setView, hobbyRoute }) {
   const [moreOpen, setMoreOpen] = useState(false);
+  const { groups, tabs: tabKeys } = useSections();
 
-  const tabs = PHONE_TABS.map((key) => NAV_ITEMS.find(([k]) => k === key)).filter(Boolean);
-  const moreActive = !PHONE_TABS.includes(view);
+  const tabs = tabKeys.map((key) => NAV_ITEMS.find(([k]) => k === key)).filter(Boolean);
+  const moreActive = !tabKeys.includes(view);
 
   const go = (key) => {
     setMoreOpen(false);
@@ -51,7 +53,7 @@ export function MobileNav({ view, setView, hobbyRoute }) {
               aria-hidden="true"
               style={{ width: 40, height: 4, borderRadius: 4, background: colors.cardBorder, margin: '6px auto 16px' }}
             />
-            {NAV_GROUPS.map((group) => (
+            {groups.map((group) => (
               <div key={group.label ?? 'home'} style={{ marginBottom: 18 }}>
                 {group.label && (
                   <div
