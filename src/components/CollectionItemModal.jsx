@@ -140,12 +140,30 @@ export function CollectionItemModal({ section, item, onClose, onSave, onRemove }
           <div key={field.key}>
             <Label>{field.label}</Label>
             <input
+              // `money` gets a numeric keypad on a phone and a currency mark in
+              // front of it; everything else is a plain text box as before.
+              type={field.type === 'money' ? 'number' : 'text'}
+              inputMode={field.type === 'money' ? 'decimal' : undefined}
+              min={field.type === 'money' ? '0' : undefined}
+              step={field.type === 'money' ? '0.01' : undefined}
               value={extras[field.key] ?? ''}
               onChange={(e) => setExtra(field.key, e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && submit()}
               placeholder={field.placeholder}
-              style={inputStyle}
+              style={
+                field.type === 'money'
+                  ? { ...inputStyle, paddingLeft: 26, backgroundImage: 'none' }
+                  : inputStyle
+              }
             />
+            {field.type === 'money' && (
+              <span
+                aria-hidden="true"
+                style={{ position: 'relative', top: -46, left: 13, font: `500 14px ${fonts.sans}`, color: colors.muted, height: 0, display: 'block' }}
+              >
+                $
+              </span>
+            )}
           </div>
         ),
       )}

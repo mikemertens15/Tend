@@ -76,6 +76,21 @@ export function addDays(dayString, n) {
   return dayStr(d);
 }
 
+// Hours between two Postgres times, or null when either is missing.
+//
+// An end before the start means the shift crossed midnight rather than that
+// someone typed it backwards — 10pm–6am is eight hours, not minus sixteen, and
+// getting this wrong would pay you a negative wage for every night shift.
+export function shiftHours(start, end) {
+  if (!start || !end) return null;
+  const mins = (t) => {
+    const [h, m] = t.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const span = mins(end) - mins(start);
+  return Math.round(((span <= 0 ? span + 1440 : span) / 60) * 100) / 100;
+}
+
 export function monthYear(d) {
   return `${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
 }

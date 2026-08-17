@@ -17,6 +17,7 @@ export const NAV_GROUPS = [
       ['systems', 'Systems', '🔧'],
       ['calendar', 'Calendar', '📅'],
       ['facts', 'Facts', '📋'],
+      ['wishlist', 'Wishlist', '✨'],
     ],
   },
   {
@@ -24,6 +25,7 @@ export const NAV_GROUPS = [
     items: [
       ['hobbies', 'Hobbies', '🎯'],
       ['goals', 'Goals', '⭐'],
+      ['work', 'Earned', '💼'],
     ],
   },
 ];
@@ -53,8 +55,10 @@ export const SECTION_BLURBS = {
   systems: 'Filters, gutters, smoke alarms — the upkeep with a clock on it',
   calendar: 'Birthdays, appointments and everything else on a date',
   facts: 'Filter sizes, paint colours, model numbers',
+  wishlist: 'Everything you want, and what it would come to',
   hobbies: 'Games, books, films and what you make',
   goals: 'The bigger things you\'re working towards',
+  work: 'What the month has earned, from shifts on the calendar',
 };
 
 // Everything you're allowed to turn off, in nav order.

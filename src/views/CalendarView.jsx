@@ -4,6 +4,8 @@ import { weekRangeLabel, dayStr, addDays, parseDay, getWeek } from '../dates';
 import { useIsNarrow } from '../useMediaQuery';
 import { useHousehold } from '../household/HouseholdProvider';
 import { useEvents } from '../data/useEvents';
+import { useWeather } from '../data/useWeather';
+import { formatTemp } from '../data/weather';
 import { EventModal } from '../components/EventModal';
 import { DisplaySetupModal } from '../components/DisplaySetupModal';
 import { Card } from '../components/ui';
@@ -23,6 +25,9 @@ export function CalendarView({ tasks, navigate }) {
   const narrow = useIsNarrow();
   const { peopleMap } = useHousehold();
   const ev = useEvents();
+  // Only the next week is ever forecast, so most cells get nothing — which is
+  // why this hangs off the day header rather than taking a row of its own.
+  const weather = useWeather();
 
   const [mode, setMode] = useState('week');
   const [offset, setOffset] = useState(0);
@@ -191,9 +196,24 @@ export function CalendarView({ tasks, navigate }) {
                 opacity: dim ? 0.45 : 1,
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-                <div style={{ font: `600 11px ${fonts.sans}`, color: colors.muted2, textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                  {mode === 'week' || narrow ? d.dow : ''}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8, gap: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+                  <span style={{ font: `600 11px ${fonts.sans}`, color: colors.muted2, textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                    {mode === 'week' || narrow ? d.dow : ''}
+                  </span>
+                  {weather.forDay(d.date) && (
+                    <span
+                      title={`${weather.forDay(d.date).label} · ${weather.forDay(d.date).rainChance ?? 0}% rain`}
+                      style={{ display: 'inline-flex', alignItems: 'baseline', gap: 3, whiteSpace: 'nowrap' }}
+                    >
+                      <span aria-hidden="true" style={{ fontSize: 11 }}>
+                        {weather.forDay(d.date).icon}
+                      </span>
+                      <span style={{ font: `600 10px ${fonts.sans}`, color: colors.muted }}>
+                        {formatTemp(weather.forDay(d.date).high, weather.unit)}
+                      </span>
+                    </span>
+                  )}
                 </div>
                 <button
                   onClick={() => setEditing({ date: d.date, event: null })}

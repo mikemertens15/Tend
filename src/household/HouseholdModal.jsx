@@ -7,6 +7,7 @@ import { useTheme } from '../useTheme';
 import { PALETTES, MODES } from '../data/palettes';
 import { useSections } from '../data/useSections';
 import { OPTIONAL_SECTIONS, SECTION_BLURBS } from '../nav';
+import { geocode } from '../data/weather';
 
 // Account + household management, opened from the TopNav avatar: share the
 // invite code, see/add members, and sign out.
@@ -149,6 +150,10 @@ export function HouseholdModal({ onClose }) {
             );
           })}
         </div>
+
+        {/* Weather */}
+        <Label>Weather</Label>
+        <WeatherSetting settings={settings} saveSettings={saveSettings} />
 
         {/* Appearance */}
         <Label>Colours</Label>
@@ -427,4 +432,111 @@ export function HouseholdModal({ onClose }) {
 
 function Label({ children }) {
   return <div style={{ font: `600 12px ${fonts.sans}`, color: colors.muted2, marginBottom: 8 }}>{children}</div>;
+}
+
+// Set once, then forgotten. The place is geocoded here and stored as lat/long,
+// so the forecast call never has to resolve a name — and picking from a list
+// beats a text box, because there are thirty Springfields.
+function WeatherSetting({ settings, saveSettings }) {
+  const place = settings.weather ?? null;
+  const unit = settings.weatherUnit ?? 'f';
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function search() {
+    if (!query.trim() || busy) return;
+    setBusy(true);
+    setErr('');
+    try {
+      const found = await geocode(query);
+      setResults(found);
+      if (found.length === 0) setErr('Nothing found by that name. Try a postcode.');
+    } catch (e) {
+      setErr(e.message || 'Could not look that up.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function choose(r) {
+    saveSettings({ weather: { lat: r.lat, lon: r.lon, label: r.label } });
+    setResults(null);
+    setQuery('');
+  }
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      {place ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', background: colors.inputBg, border: `1px solid ${colors.cardBorder}`, borderRadius: 12, padding: '11px 14px' }}>
+          <span style={{ font: `600 13px ${fonts.sans}`, color: colors.ink, minWidth: 0 }}>📍 {place.label}</span>
+          <button onClick={() => saveSettings({ weather: null })} style={{ font: `500 12px ${fonts.sans}`, color: colors.muted2, flexShrink: 0 }}>
+            Change
+          </button>
+        </div>
+      ) : (
+        <>
+          <div style={{ font: `400 12px/1.5 ${fonts.sans}`, color: colors.muted, marginBottom: 8 }}>
+            Where you live, so the calendar can show the week ahead and Tend can tell you when the one dry day is.
+          </div>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && search()}
+              placeholder="Town or postcode"
+              style={{ flex: 1, border: `1px solid ${colors.inputBorder}`, background: colors.inputBg, borderRadius: 12, padding: '11px 14px', font: `500 14px ${fonts.sans}`, color: colors.ink, outline: 'none' }}
+            />
+            <button
+              onClick={search}
+              disabled={busy || !query.trim()}
+              style={{ padding: '11px 18px', borderRadius: 12, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, opacity: busy || !query.trim() ? 0.6 : 1 }}
+            >
+              {busy ? 'Looking…' : 'Find'}
+            </button>
+          </div>
+        </>
+      )}
+
+      {err && <div style={{ font: `500 12px ${fonts.sans}`, color: colors.accentDark, marginTop: 8 }}>{err}</div>}
+
+      {results?.length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          {results.map((r) => (
+            <button
+              key={r.id}
+              onClick={() => choose(r)}
+              style={{ display: 'block', width: '100%', textAlign: 'left', padding: '10px 13px', borderRadius: 10, background: colors.inputBg, border: `1px solid ${colors.cardBorder}`, marginBottom: 6, font: `500 13px ${fonts.sans}`, color: colors.ink }}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {place && (
+        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+          {[['f', 'Fahrenheit'], ['c', 'Celsius']].map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => saveSettings({ weatherUnit: key })}
+              aria-pressed={unit === key}
+              style={{
+                flex: 1,
+                padding: '9px 12px',
+                borderRadius: 20,
+                background: unit === key ? colors.accent : colors.inputBg,
+                border: `1px solid ${unit === key ? colors.accent : colors.cardBorder}`,
+                color: unit === key ? colors.onAccent : colors.muted2,
+                font: `${unit === key ? 600 : 500} 12.5px ${fonts.sans}`,
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

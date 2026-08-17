@@ -9,7 +9,13 @@
 // permissions. The email digest (supabase/functions/daily-digest) computes the
 // same list server-side from the same rules.
 
+import { isWet, FREEZING_C } from './weather';
+import { dayStr, parseDay, shortDay } from '../dates';
+
 const URGENCY = { late: 0, soon: 1 };
+
+const todayStr = () => dayStr();
+const dayName = (date) => (date === dayStr() ? 'today' : shortDay(parseDay(date)));
 
 // Groceries are deliberately not in here: the only interesting signal is
 // "over budget", and loading the whole shopping hook on the dashboard to find
@@ -19,8 +25,13 @@ const URGENCY = { late: 0, soon: 1 };
 // its piece about overdue chores, in kinder words and with a button that
 // actually helps. Repeating it here as a red count directly underneath would
 // undo the whole point of it.
-export function buildNudges({ tasks = [], systems = [], pets = null, catchingUp = false }) {
+export function buildNudges({ tasks = [], systems = [], pets = null, catchingUp = false, weather = null }) {
   const out = [];
+
+  // Weather only earns a line when it changes what you'd do. "It's going to
+  // rain" is something your phone already told you; "the one outdoor job you
+  // have is booked for the only wet day this week" is not.
+  for (const n of weatherNudges(tasks, weather)) out.push(n);
 
   const overdue = tasks.filter((t) => !t.done && t.dueType === 'overdue');
   if (overdue.length > 0 && !catchingUp) {
@@ -99,4 +110,55 @@ export function buildNudges({ tasks = [], systems = [], pets = null, catchingUp 
   }
 
   return out.sort((a, b) => URGENCY[a.level] - URGENCY[b.level]);
+}
+
+// How far ahead to look for a dry day. Past a week the forecast is a guess and
+// the chore isn't urgent enough to plan around one.
+const OUTLOOK_DAYS = 6;
+
+function weatherNudges(tasks, weather) {
+  if (!weather?.ready) return [];
+  const out = [];
+
+  const upcoming = Object.values(weather.days)
+    .filter((d) => d.date >= todayStr())
+    .sort((a, b) => (a.date < b.date ? -1 : 1))
+    .slice(0, OUTLOOK_DAYS);
+  if (upcoming.length === 0) return [];
+
+  // Outdoor work booked for a wet day, when a dry one is coming.
+  const outdoorSoon = tasks.filter(
+    (t) => !t.done && t.room === 'outside' && t.daysLeft >= 0 && t.daysLeft < OUTLOOK_DAYS,
+  );
+  const rainedOn = outdoorSoon.filter((t) => weather.days[t.dueOn] && isWet(weather.days[t.dueOn].code));
+  if (rainedOn.length > 0) {
+    const dry = upcoming.find((d) => !isWet(d.code) && d.date > rainedOn[0].dueOn);
+    if (dry) {
+      out.push({
+        key: 'weather-outdoor',
+        level: 'soon',
+        icon: '🌧️',
+        text:
+          rainedOn.length === 1
+            ? `"${rainedOn[0].title}" is booked for a wet day — ${dayName(dry.date)} looks dry`
+            : `${rainedOn.length} outdoor jobs land on wet days — ${dayName(dry.date)} looks dry`,
+        go: 'chores',
+      });
+    }
+  }
+
+  // The first freeze is the one weather event that creates house jobs on its
+  // own, whether or not anything is on the list.
+  const freeze = upcoming.find((d) => d.low != null && d.low <= FREEZING_C);
+  if (freeze) {
+    out.push({
+      key: 'weather-freeze',
+      level: 'soon',
+      icon: '🥶',
+      text: `Freezing ${freeze.date === todayStr() ? 'tonight' : dayName(freeze.date)} — hoses, outside taps, the car`,
+      go: 'systems',
+    });
+  }
+
+  return out;
 }

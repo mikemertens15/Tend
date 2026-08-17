@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useHousehold } from '../household/HouseholdProvider';
-import { dayStr, addDays, parseDay, daysUntil, monthDay } from '../dates';
+import { dayStr, addDays, parseDay, daysUntil, monthDay, shiftHours } from '../dates';
 
 // Everything that happens on a date but isn't work: birthdays, appointments,
 // the school play, a weekend away.
@@ -13,7 +13,12 @@ export const EVENT_KINDS = [
   ['school', 'School', '🎒'],
   ['trip', 'Trip', '✈️'],
   ['holiday', 'Holiday', '🎉'],
+  // A shift is a calendar event, because that's where you were already putting
+  // it. Giving it an end time is the whole of what income tracking needed.
+  ['work', 'Work', '💼'],
 ];
+
+export const WORK_KIND = 'work';
 
 export const kindMeta = (key) => EVENT_KINDS.find(([k]) => k === key) ?? EVENT_KINDS[0];
 
@@ -41,9 +46,10 @@ function timeLabel(t) {
   return m === 0 ? `${hour} ${period}` : `${hour}:${String(m).padStart(2, '0')} ${period}`;
 }
 
-export function useEvents() {
+// `enabled: false` parks the hook — see the note in useSystems.
+export function useEvents({ enabled = true } = {}) {
   const { household, members } = useHousehold();
-  const householdId = household?.id ?? null;
+  const householdId = enabled ? (household?.id ?? null) : null;
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -106,6 +112,10 @@ export function useEvents() {
             spanDays,
             time: timeLabel(r.start_time),
             startTime: r.start_time,
+            endTime: r.end_time,
+            timeRange:
+              r.start_time && r.end_time ? `${timeLabel(r.start_time)}–${timeLabel(r.end_time)}` : timeLabel(r.start_time),
+            hours: shiftHours(r.start_time, r.end_time),
             allDay: !r.start_time,
             who: nameById[r.member_id] ?? null,
             repeatYearly: r.repeat_yearly,

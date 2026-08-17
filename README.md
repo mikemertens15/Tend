@@ -129,6 +129,59 @@ for an optional email. **The digest is dormant** — it sends nothing until a
 created. Deploying the function alone does nothing; the steps are in a comment
 at the bottom of the file.
 
+## Weather, and why it isn't a section
+
+`data/weather.js` talks to Open-Meteo, which needs no API key and sends CORS
+headers — so it's a plain fetch from the browser with no proxy, no secret and no
+edge function. The place is geocoded once when you set it and stored as lat/long
+in household settings; the forecast is cached in localStorage for an hour, which
+matters mostly because the kitchen tablet is left running for days.
+
+It deliberately has no section of its own. Weather on its own is something your
+phone already does better. What Tend can do that a weather app can't is join it
+to the list: an outdoor chore booked for the only wet day of the week, with the
+dry one named — and a freeze in the forecast, which is the one bit of weather
+that makes work for you whether or not anything was on the list. Both live in
+`data/nudges.js` with everything else that's slipping.
+
+## Earned
+
+A shift is a `work` event on the calendar, not a new table. That's the whole
+design: you were already putting work on the calendar, so there is nothing extra
+to enter and nothing to keep in sync. `end_time` already existed on `events` and
+had simply never been used; hours come from the two times, money is hours × your
+rate, and rates live in the settings jsonb. No migration was needed at all.
+
+`dates.js` owns `shiftHours`, and the case it exists for is a shift that crosses
+midnight: 10pm–6am is eight hours, not minus sixteen, and getting it wrong pays
+a negative wage for every night shift.
+
+What this deliberately is **not** is payroll. No tax, no withholding, no
+overtime multiplier, no PTO. Those vary by state, employer and week, and a
+number that's confidently wrong about your pay is worse than no number.
+`takeHomePct` is the one concession — a single percentage you read off a real
+payslip, labelled as the estimate it is.
+
+## The wishlist
+
+A collection domain (`wish`), not a new section type — it gets the whole
+collection engine for nothing. The only machinery it needed was `totals` in the
+presentation spec, so `CollectionView` can sum a money field.
+
+Two things make it worth more than the spreadsheet it replaces. The total splits
+by status, because "everything I want" is a fantasy number and "everything I'm
+saving for" is a plan, and showing one without the other makes a wishlist either
+depressing or useless. And it says how many things have no price on them, since
+a total that quietly ignores twelve items is worse than no total.
+
+It's `standalone`, meaning it has its own nav entry rather than living behind
+Hobbies — it's collection-shaped but it isn't a hobby, and it's excluded from
+`ALL_HOBBY_DOMAINS` so "3 things on the go" never counts a saw you haven't
+bought.
+
+Price checking is manual on purpose. Scraping retailers is fragile and the
+legality is murky, so there's a "last checked" field and an honest date instead.
+
 ## How a hobby looks
 
 The hobby screens were bland for a structural reason, not a lazy one: a domain
@@ -334,10 +387,28 @@ nav. It's hand-written on purpose — a generated changelog lists commits, and
 what's worth reading later is what changed about *using* the thing. To cut a
 release, bump `version` in `package.json` and add an entry at the top.
 
+## Loading
+
+Home and Chores ship in the initial bundle — one is where you land, the other is
+where most people go first. Every other view is a `lazy()` chunk fetched when
+it's opened, behind one `Suspense` boundary around the content area only, so the
+nav and the page chrome never flicker.
+
+That took the first load from a single 604 kB bundle to ~500 kB across two
+files (144 kB gzipped, down from 164 kB), with each section arriving as 2–21 kB
+when you ask for it.
+
 ## Ideas for next
 
+- **Custom hobbies.** The `collection_domains` table exists and is empty. The
+  app still reads `DOMAINS` from code; the remaining work is a merged registry
+  and the editor UI.
+- **Web Push.** `push_subscriptions` exists and is empty. Needs VAPID keys, a
+  `push` listener in `public/sw.js`, and a sender — the natural sibling of
+  `supabase/functions/daily-digest`.
+- **Capacitor + a WidgetKit extension**, for home-screen widgets. Needs the
+  Apple Developer account and an Xcode build.
 - Email invites alongside the shareable join code.
-- Meal plans that push their ingredients onto the grocery list.
 - Photos on workshop projects and pets (Supabase Storage).
-- Code-splitting: it's one 550 kB bundle, which is fine on wifi and less fine on
-  a phone in a supermarket car park.
+- Turn on leaked-password protection in the Supabase auth settings — it's a
+  dashboard toggle and the linter flags it.

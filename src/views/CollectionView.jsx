@@ -13,6 +13,8 @@ import {
   itemTint,
   tintedLabel,
   shelfFor,
+  totalsFor,
+  money,
 } from '../data/collections';
 import { TrophyShelf } from '../components/TrophyShelf';
 import { matchesOwner, OWNER_ALL } from '../data/owner';
@@ -36,12 +38,17 @@ export function CollectionView({ section, navigate }) {
   // Counted off `visible`, not the whole domain, so the summary line always
   // describes the list underneath it rather than someone else's shelf.
   const inProgress = visible.filter(isUnderway).length;
+  // Null for everything that isn't money-shaped, which is most domains.
+  const totals = totalsFor(spec, visible);
 
   const ownerChips = [['all', 'Everyone'], ...order.map((n) => [n, n])];
 
   return (
     <div>
-      {/* Hop straight between hobbies without going back to the landing page. */}
+      {/* Hop straight between hobbies without going back to the landing page.
+          A standalone section has its own nav entry and isn't behind that door,
+          so it gets neither the back link nor the switcher. */}
+      {!section.standalone && (
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14, flexWrap: 'wrap' }}>
         <button
           onClick={() => navigate('hobbies')}
@@ -70,13 +77,14 @@ export function CollectionView({ section, navigate }) {
           );
         })}
       </div>
+      )}
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
         <div>
           <div style={{ font: `400 30px ${fonts.serif}`, color: colors.ink }}>{section.label}</div>
           <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-            {visible.length} {(visible.length === 1 ? spec.noun : spec.label).toLowerCase()} ·{' '}
-            {inProgress} in progress
+            {visible.length} {(visible.length === 1 ? spec.noun : spec.label).toLowerCase()}
+            {totals ? ` · ${money(totals.all)} all in` : ` · ${inProgress} in progress`}
           </div>
         </div>
         <button
@@ -176,9 +184,16 @@ export function CollectionView({ section, navigate }) {
 
           return (
             <div key={status.key} style={{ marginBottom: 22 }}>
-              <div style={{ font: `400 18px ${fonts.serif}`, color: colors.ink, marginBottom: 10 }}>
-                {status.long}
-                <span style={{ font: `500 12px ${fonts.sans}`, color: colors.muted, marginLeft: 8 }}>{group.length}</span>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 10 }}>
+                <div style={{ font: `400 18px ${fonts.serif}`, color: colors.ink }}>
+                  {status.long}
+                  <span style={{ font: `500 12px ${fonts.sans}`, color: colors.muted, marginLeft: 8 }}>{group.length}</span>
+                </div>
+                {totals && totals.byStatus[status.key] > 0 && (
+                  <span style={{ font: `600 13px ${fonts.sans}`, color: colors.muted3 }}>
+                    {money(totals.byStatus[status.key])}
+                  </span>
+                )}
               </div>
               <Card style={{ padding: '4px 22px 8px' }}>
                 {group.map((item, idx) => (
@@ -195,6 +210,22 @@ export function CollectionView({ section, navigate }) {
             </div>
           );
         })
+      )}
+
+      {/* The bottom line, and what it's honestly based on. A total that quietly
+          ignores twelve unpriced things is worse than no total. */}
+      {totals && visible.length > 0 && (
+        <Card style={{ padding: '16px 22px', marginTop: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 12, flexWrap: 'wrap' }}>
+          <span style={{ font: `400 15px ${fonts.sans}`, color: colors.muted2 }}>
+            All of it
+            {totals.unpriced > 0 && (
+              <span style={{ font: `400 12.5px ${fonts.sans}`, color: colors.faint, marginLeft: 8 }}>
+                {totals.unpriced} with no price on {totals.unpriced === 1 ? 'it' : 'them'}
+              </span>
+            )}
+          </span>
+          <span style={{ font: `400 26px ${fonts.serif}`, color: colors.ink }}>{money(totals.all)}</span>
+        </Card>
       )}
 
       {(adding || editing) && (
@@ -228,6 +259,13 @@ function ItemRow({ item, spec, topBorder, onUpdate, onEdit }) {
     // Skip the tinted one only when it actually got a colour; an unrecognised
     // service still belongs in the subtitle rather than disappearing.
     if (field.key === tintField && tint) continue;
+    // A money field in the subtitle is a price, and "1400" next to a shop name
+    // reads as a model number.
+    if (field.type === 'money') {
+      const n = Number(String(item[field.key]).replace(/[^0-9.-]/g, ''));
+      meta.push(Number.isFinite(n) && n > 0 ? money(n) : null);
+      continue;
+    }
     const opt = field.options?.find((o) => optionValue(o) === item[field.key]);
     meta.push(opt ? optionLabel(opt) : item[field.key]);
   }

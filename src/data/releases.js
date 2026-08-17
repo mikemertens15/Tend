@@ -8,6 +8,48 @@
 
 export const RELEASES = [
   {
+    version: '1.0.0',
+    date: '2026-08-16',
+    name: 'Settled in',
+    notes: [
+      [
+        'changed',
+        "Version one. Nothing moved today — this is the same Tend as yesterday, with a number on it that says it's finished enough to lean on. It started as a board that answered one question every week: what needs doing. It now runs the chores room by room, the week's dinners, the shopping and what it costs, the animals, the upkeep with a clock on it, the calendar, the reference sheet, the wishlist, what the month has earned, and the half of life that isn't housework.",
+      ],
+      [
+        'changed',
+        "It also knows when you've been away and doesn't hold it against you, hands the whole feeding routine to a sitter who has no account, puts itself on the kitchen wall, and lets you switch off every part of it you don't want.",
+      ],
+      [
+        'changed',
+        'What comes next arrives as updates rather than a rewrite: hobbies you invent yourself, notifications on your phone, and a proper home-screen widget.',
+      ],
+    ],
+  },
+  {
+    version: '0.14.0',
+    date: '2026-08-16',
+    name: 'What it comes to',
+    notes: [
+      [
+        'added',
+        "Weather on the calendar, and where it actually helps: Tend now notices when the one outdoor job you have is booked for the only wet day of the week, and tells you which day is dry. It also spots a freeze coming, which is the one bit of weather that makes work for you whether or not it was on the list.",
+      ],
+      [
+        'added',
+        "A wishlist, with the sum at the bottom. Split by how much you actually mean it \u2014 \"everything I want\" is a fantasy number and \"everything I'm saving for\" is a plan, and seeing both is the point. It's honest about what it's missing, too: anything with no price on it gets counted and said out loud.",
+      ],
+      [
+        'added',
+        'Earned. Put a shift on the calendar with a start and an end, set your hourly rate once, and Tend keeps a running total for the month \u2014 what you\u2019ve earned, what\u2019s still booked, and where the month lands. No bank, no receipts, nothing to import. Night shifts that cross midnight count as the hours they are.',
+      ],
+      [
+        'changed',
+        'The app no longer downloads all of itself before showing you anything. Each section arrives when you open it, which is the difference between fine on wifi and fine on a phone in a supermarket car park.',
+      ],
+    ],
+  },
+  {
     version: '0.13.0',
     date: '2026-08-16',
     name: 'The platinum shelf',

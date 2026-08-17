@@ -235,6 +235,37 @@ export const DOMAINS = {
     progress: null,
   },
 
+  // The spreadsheet of things you want, with the sum at the bottom — which is
+  // the only reason it beats a note on your phone. Splitting the total by
+  // status is the useful part: "everything I want" is a fantasy number,
+  // "everything I'm actually saving for" is a plan.
+  wish: {
+    key: 'wish',
+    noun: 'Thing',
+    // `label` is the plural used in counts ("5 things"), not the section's
+    // name — the nav and the heading say Wishlist, which does not pluralise.
+    label: 'Things',
+    titlePlaceholder: 'e.g. Festool track saw',
+    noteLabel: 'Which one, and why',
+    statuses: [
+      { key: 'someday', short: 'Someday', long: 'Someday' },
+      { key: 'want', short: 'Want', long: 'Actually want' },
+      { key: 'saving', short: 'Saving', long: 'Saving for' },
+      { key: 'bought', short: 'Got it', long: 'Got it', rate: true },
+    ],
+    fields: [
+      { key: 'price', label: 'Roughly what', type: 'money', meta: true, placeholder: '0.00' },
+      { key: 'where', label: 'Where from', type: 'text', meta: true, placeholder: 'e.g. Amazon, the local place' },
+      { key: 'url', label: 'Link', type: 'text', placeholder: 'Paste a link' },
+      // Prices move, and a number with no date on it quietly becomes a lie.
+      // Checked by hand on purpose: scraping retailers is fragile and the
+      // legality is murky.
+      { key: 'checked', label: 'Price last checked', type: 'text', placeholder: 'e.g. August' },
+    ],
+    progress: null,
+    presentation: { totals: { field: 'price', label: 'Wishlist' } },
+  },
+
   build: {
     key: 'build',
     noun: 'Build',
@@ -257,19 +288,37 @@ export const DOMAINS = {
   },
 };
 
-// Nav sections. A section can hold more than one domain — Screen keeps shows
-// and movies side by side behind a toggle, the way the old Watchlist did.
-export const HOBBY_SECTIONS = [
+// Sections. A section can hold more than one domain — Screen keeps shows and
+// movies side by side behind a toggle, the way the old Watchlist did.
+//
+// `standalone` means the section has its own nav entry instead of living on the
+// Hobbies landing page. The wishlist is collection-shaped and gets the whole
+// engine for free, but it isn't a hobby and doesn't belong behind that door.
+export const COLLECTION_SECTIONS = [
   { key: 'games', label: 'Games', icon: '🎮', blurb: 'Backlog, platinums, what to play next', domains: ['game'] },
   { key: 'screen', label: 'Screen', icon: '📺', blurb: 'Shows and movies across every service', domains: ['show', 'movie'] },
   { key: 'books', label: 'Books', icon: '📚', blurb: 'Reading now, up next, what stuck', domains: ['book'] },
   { key: 'workshop', label: 'Workshop', icon: '🪵', blurb: 'Woodworking and everything else you make', domains: ['making'] },
   { key: 'builds', label: 'Builds', icon: '⌨️', blurb: 'The apps you keep starting', domains: ['build'] },
+  {
+    key: 'wishlist',
+    label: 'Wishlist',
+    icon: '✨',
+    blurb: 'Everything you want, and what it would come to',
+    domains: ['wish'],
+    standalone: true,
+  },
 ];
 
-export const ALL_HOBBY_DOMAINS = Object.keys(DOMAINS);
+// Kept as the old name because a lot of code imports it; the Hobbies landing
+// page and its "in progress" counts mean hobbies specifically.
+export const HOBBY_SECTIONS = COLLECTION_SECTIONS.filter((s) => !s.standalone);
 
-export const sectionByKey = (key) => HOBBY_SECTIONS.find((s) => s.key === key) ?? null;
+// Every domain that counts as a hobby — the wishlist is excluded, so "3 things
+// on the go" never quietly includes a saw you haven't bought.
+export const ALL_HOBBY_DOMAINS = HOBBY_SECTIONS.flatMap((s) => s.domains);
+
+export const sectionByKey = (key) => COLLECTION_SECTIONS.find((s) => s.key === key) ?? null;
 
 // Every key a domain keeps in `details`, so the hook knows what to split out.
 export const detailKeys = (domain) => (DOMAINS[domain]?.fields ?? []).map((f) => f.key);
@@ -324,3 +373,44 @@ export function tintedLabel(spec, item) {
 // The status this domain shows as a case of trophies, if it has one.
 export const shelfFor = (spec, statusKey) =>
   spec?.presentation?.shelf?.status === statusKey ? spec.presentation.shelf : null;
+
+// Money, as typed. Anything unparseable counts as nothing rather than NaN —
+// a blank price shouldn't poison a whole column.
+const amount = (v) => {
+  const n = Number(String(v ?? '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+export const money = (n) =>
+  n >= 1000 ? `$${Math.round(n).toLocaleString()}` : `$${n.toFixed(n % 1 === 0 ? 0 : 2)}`;
+
+// What a collection comes to, in total and per status.
+//
+// Summing is the only thing the collection engine couldn't do, and the only
+// thing a wishlist needs that a note on your phone doesn't have. Split by
+// status because the split is the point: "everything I want" is a fantasy
+// number and "everything I'm saving for" is a plan, and showing one without
+// the other is how a wishlist becomes either depressing or useless.
+export function totalsFor(spec, items) {
+  const totals = spec?.presentation?.totals;
+  if (!totals) return null;
+
+  const byStatus = {};
+  let all = 0;
+  let counted = 0;
+  for (const item of items) {
+    const v = amount(item[totals.field]);
+    byStatus[item.status] = (byStatus[item.status] ?? 0) + v;
+    all += v;
+    if (v > 0) counted++;
+  }
+  return {
+    field: totals.field,
+    label: totals.label ?? null,
+    all,
+    byStatus,
+    counted,
+    // How many have no number on them, so the total can admit what it's missing.
+    unpriced: items.length - counted,
+  };
+}

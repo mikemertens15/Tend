@@ -12,6 +12,7 @@ import { buildNudges } from '../data/nudges';
 import { buildCatchUp } from '../data/catchup';
 import { CatchUpCard } from '../components/CatchUpCard';
 import { useSections } from '../data/useSections';
+import { useWeather } from '../data/useWeather';
 
 export function HomeView({
   tasks,
@@ -36,6 +37,7 @@ export function HomeView({
   // Only Home and the Pets section load this, so the rest of the app doesn't
   // pay for three tables it isn't showing.
   const pets = usePets({ enabled: isOn('pets') });
+  const weather = useWeather();
   const greetingName = currentMember?.name || 'there';
   const today = week.days[week.todayIndex].date;
 
@@ -64,7 +66,7 @@ export function HomeView({
 
   // Everything that's actually slipping, gathered from the sections that would
   // otherwise each need visiting to find out.
-  const nudges = buildNudges({ tasks, systems, pets, catchingUp: Boolean(catchUp) });
+  const nudges = buildNudges({ tasks, systems, pets, catchingUp: Boolean(catchUp), weather });
 
   // Which rooms still want something, busiest first.
   const busyRooms = ROOMS.map(([key, label, icon]) => ({
