@@ -38,6 +38,22 @@ export const tone = {
 
 export const heroGradient = 'var(--g-hero)';
 
+// The trophy shelf. Deliberately not part of `colors` — these don't change with
+// the skin, and keeping them separate is what stops one being reached for by
+// accident somewhere it would look wrong. See the note in index.css.
+export const shelf = {
+  case: 'var(--sh-case)',
+  caseBorder: 'var(--sh-case-border)',
+  rail: 'var(--sh-rail)',
+  glow: 'var(--sh-glow)',
+  ink: 'var(--sh-ink)',
+  muted: 'var(--sh-muted)',
+  faint: 'var(--sh-faint)',
+  star: 'var(--sh-star)',
+  starEmpty: 'var(--sh-star-empty)',
+  metal: ['var(--sh-metal-1)', 'var(--sh-metal-2)', 'var(--sh-metal-3)', 'var(--sh-metal-4)'],
+};
+
 export const shadows = {
   accent: 'var(--s-accent)',
   modal: 'var(--s-modal)',

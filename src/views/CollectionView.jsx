@@ -4,7 +4,17 @@ import { Card, Avatar, ProgressBar } from '../components/ui';
 import { useHousehold } from '../household/HouseholdProvider';
 import { useCollection } from '../data/useCollection';
 import { CollectionItemModal } from '../components/CollectionItemModal';
-import { DOMAINS, HOBBY_SECTIONS, isUnderway, optionValue, optionLabel } from '../data/collections';
+import {
+  DOMAINS,
+  HOBBY_SECTIONS,
+  isUnderway,
+  optionValue,
+  optionLabel,
+  itemTint,
+  tintedLabel,
+  shelfFor,
+} from '../data/collections';
+import { TrophyShelf } from '../components/TrophyShelf';
 import { matchesOwner, OWNER_ALL } from '../data/owner';
 
 // One view for every hobby. Everything on screen — the lifecycle tabs, the
@@ -147,6 +157,23 @@ export function CollectionView({ section, navigate }) {
         spec.statuses.map((status) => {
           const group = visible.filter((i) => i.status === status.key);
           if (group.length === 0) return null;
+
+          // One status per domain can ask for the display case instead of a
+          // list. It brings its own heading, so it replaces the whole block.
+          const shelfSpec = shelfFor(spec, status.key);
+          if (shelfSpec) {
+            return (
+              <TrophyShelf
+                key={status.key}
+                heading={shelfSpec.heading}
+                blurb={shelfSpec.blurb}
+                items={group}
+                spec={spec}
+                onOpen={setEditing}
+              />
+            );
+          }
+
           return (
             <div key={status.key} style={{ marginBottom: 22 }}>
               <div style={{ font: `400 18px ${fonts.serif}`, color: colors.ink, marginBottom: 10 }}>
@@ -187,10 +214,20 @@ export function CollectionView({ section, navigate }) {
 }
 
 function ItemRow({ item, spec, topBorder, onUpdate, onEdit }) {
+  // The tinted field is pulled out of the subtitle and rendered as a coloured
+  // pill instead — "PlayStation" in PlayStation blue is scannable down a list
+  // in a way that the same word buried in a grey run of text is not.
+  const tintField = spec.presentation?.tint?.field;
+  const tint = itemTint(spec, item);
+  const tintLabel = tintedLabel(spec, item);
+
   // Subtitle line: owner, then whichever spec fields are flagged as meta.
   const meta = [item.owner];
   for (const field of spec.fields) {
     if (!field.meta || !item[field.key]) continue;
+    // Skip the tinted one only when it actually got a colour; an unrecognised
+    // service still belongs in the subtitle rather than disappearing.
+    if (field.key === tintField && tint) continue;
     const opt = field.options?.find((o) => optionValue(o) === item[field.key]);
     meta.push(opt ? optionLabel(opt) : item[field.key]);
   }
@@ -205,8 +242,25 @@ function ItemRow({ item, spec, topBorder, onUpdate, onEdit }) {
         {item.owner && <Avatar who={item.owner} size={30} />}
         <button onClick={onEdit} style={{ flex: 1, minWidth: 140, textAlign: 'left', cursor: 'pointer' }}>
           <div style={{ font: `600 14px ${fonts.sans}`, color: colors.ink }}>{item.title}</div>
-          <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-            {meta.filter(Boolean).join(' · ') || '—'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 3, flexWrap: 'wrap' }}>
+            {tint && (
+              <span
+                style={{
+                  font: `600 10.5px ${fonts.sans}`,
+                  color: '#fff',
+                  background: tint,
+                  padding: '2.5px 8px',
+                  borderRadius: 20,
+                  letterSpacing: '.02em',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {tintLabel}
+              </span>
+            )}
+            <span style={{ font: `400 12px ${fonts.sans}`, color: colors.muted }}>
+              {meta.filter(Boolean).join(' · ') || (tint ? '' : '—')}
+            </span>
           </div>
         </button>
 

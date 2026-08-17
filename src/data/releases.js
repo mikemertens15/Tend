@@ -8,6 +8,29 @@
 
 export const RELEASES = [
   {
+    version: '0.13.0',
+    date: '2026-08-16',
+    name: 'The platinum shelf',
+    notes: [
+      [
+        'added',
+        'Platinums get a shelf. Every game you saw all the way through now stands in a lit display case with its own trophy, rather than sitting in a list under a heading — because a platinum is a thing you keep, not a state a game is in.',
+      ],
+      [
+        'added',
+        'Consoles have colours. A game wears its platform, so you can tell at a glance what your backlog is actually on, and each trophy stands in a wash of its console\'s colour.',
+      ],
+      [
+        'added',
+        'Shows and films are colour-coded by service, worked out from whatever you typed — "Max (was HBO)" and "netflix" both land right. Anything it doesn\'t recognise is left alone.',
+      ],
+      [
+        'changed',
+        'How a hobby looks is now part of what a hobby is, rather than something the one shared screen decides. Books, Workshop and Builds are unchanged — for now.',
+      ],
+    ],
+  },
+  {
     version: '0.12.0',
     date: '2026-08-16',
     name: 'Only what you use',

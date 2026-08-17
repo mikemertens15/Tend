@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { colors, fonts } from '../theme';
 import { useHousehold } from '../household/HouseholdProvider';
 import { ModalShell, Label, Chip, inputStyle, PrimaryButton, GhostButton, MemberPicker, DeleteButton } from './Modal';
-import { DOMAINS, firstStatus, optionValue, optionLabel } from '../data/collections';
+import { DOMAINS, firstStatus, optionValue, optionLabel, optionColor } from '../data/collections';
 
 // Add or edit any collection item. Every input below is driven by the domain
 // spec, so a new hobby gets a working form without touching this file.
@@ -127,6 +127,7 @@ export function CollectionItemModal({ section, item, onClose, onSave, onRemove }
                   <Chip
                     key={value}
                     active={extras[field.key] === value}
+                    tint={optionColor(opt)}
                     onClick={() => setExtra(field.key, extras[field.key] === value ? '' : value)}
                   >
                     {optionLabel(opt)}

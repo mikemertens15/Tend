@@ -70,14 +70,19 @@ export function Label({ children }) {
   return <div style={{ font: `600 12px ${fonts.sans}`, color: colors.muted2, marginBottom: 8 }}>{children}</div>;
 }
 
-export function Chip({ active, onClick, children }) {
+// `tint` lets an option carry its own colour when selected — a platform chip
+// goes PlayStation blue rather than the app accent, so picking it looks like
+// the pill it produces on the row. Optional: without one, nothing changes.
+export function Chip({ active, onClick, children, tint }) {
   return (
     <button
       onClick={onClick}
       style={
         active
-          ? { padding: '9px 15px', borderRadius: 12, background: colors.accent, color: colors.onAccent, font: `600 12.5px ${fonts.sans}` }
-          : { padding: '9px 15px', borderRadius: 12, background: colors.inputBg, border: `1px solid ${colors.cardBorder}`, color: colors.muted2, font: `500 12.5px ${fonts.sans}` }
+          // White only on a tint, whose colours were picked against it. The
+          // untinted chip keeps the palette's own on-accent ink.
+          ? { padding: '9px 15px', borderRadius: 12, background: tint ?? colors.accent, color: tint ? '#fff' : colors.onAccent, font: `600 12.5px ${fonts.sans}` }
+          : { padding: '9px 15px', borderRadius: 12, background: colors.inputBg, border: `1px solid ${tint ?? colors.cardBorder}`, color: colors.muted2, font: `500 12.5px ${fonts.sans}` }
       }
     >
       {children}

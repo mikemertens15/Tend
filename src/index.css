@@ -301,6 +301,34 @@
   --s-backdrop: rgba(8, 5, 12, 0.62);
 }
 
+/* The trophy shelf has its own register, and is the one surface in the app
+   that doesn't follow the skin.
+
+   Everything else is a room in the house and gets painted to match. A display
+   case isn't — it's a dark box with a light in it, and it looks the same
+   whatever colour the walls are. Putting a platinum trophy on cream would also
+   mean tinting the metal per palette, at which point it stops reading as
+   metal.
+
+   Defined once, deliberately outside the palette blocks above. */
+:root {
+  --sh-case: linear-gradient(165deg, #1b2028 0%, #12151b 55%, #0d1015 100%);
+  --sh-case-border: #2a303a;
+  --sh-rail: linear-gradient(180deg, #2c333e, #1a1f27);
+  --sh-glow: radial-gradient(ellipse at 50% 42%, rgba(190, 214, 240, 0.16), transparent 68%);
+  --sh-ink: #eef2f7;
+  --sh-muted: #93a1b3;
+  --sh-faint: #7b8899;
+  --sh-star: #d8dee7;
+  --sh-star-empty: #39414d;
+  /* Platinum: the light-to-shadow run is what reads as polished metal, so the
+     stops are deliberately uneven rather than a smooth ramp. */
+  --sh-metal-1: #f6f9fc;
+  --sh-metal-2: #c2ccd8;
+  --sh-metal-3: #eaf0f6;
+  --sh-metal-4: #94a1b1;
+}
+
 * { box-sizing: border-box; }
 
 html, body, #root {

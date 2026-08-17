@@ -19,6 +19,52 @@
 //   fields            extra inputs, stored in `details`. `meta: true` puts the
 //                     value in the row's subtitle line.
 //   progress          enables the progress bar and names its unit
+//   presentation      how the domain *looks*. See PRESENTATION below.
+//
+// Presentation belongs in the spec rather than in the view, and that's the
+// whole reason the hobby screens stopped being one bland list. A domain that
+// can only describe its vocabulary can only ever be rendered generically. The
+// same key is what a household-defined hobby will fill in later, so a custom
+// collection can look like something too, rather than being the one shape the
+// app can't dress up.
+//
+//   presentation: {
+//     tint:  { field, guess }  which field colours an item, and how the colour
+//                              is found — from the chip option's own third
+//                              element, or by keyword when the field is free
+//                              text.
+//     shelf: { status, … }     one status displayed as a case of trophies
+//                              instead of a list. For the things you keep
+//                              rather than the things you did.
+//   }
+
+// Console colours. Recognisably each platform's own, but darkened where the
+// brand value wouldn't clear 4.5:1 against the white text sitting on it — a
+// label you can't read is worse than one that's slightly off-brand.
+const PLATFORMS = [
+  ['PlayStation', 'PlayStation', '#0064c8'],
+  ['PC', 'PC', '#4b5563'],
+  ['Switch', 'Switch', '#c4111f'],
+  ['Xbox', 'Xbox', '#0f7b0f'],
+  ['Mobile', 'Mobile', '#0f766e'],
+];
+
+// Where to watch is free text — "Netflix", "netflix", "Max (was HBO)" — so its
+// colour is guessed from what you typed, the same way rooms.js guesses a room
+// and useGroceries guesses an aisle. A pre-selection you can ignore, never a
+// claim: anything unrecognised just stays uncoloured.
+const SERVICE_TINTS = [
+  [/netflix/i, '#b1060f'],
+  [/disney|disney\+/i, '#1a3a8f'],
+  [/prime|amazon/i, '#0b7285'],
+  [/max|hbo/i, '#4c2a9c'],
+  [/apple ?tv|apple/i, '#3f4650'],
+  [/hulu/i, '#0f7b3f'],
+  [/paramount/i, '#0055a8'],
+  [/peacock/i, '#8a3d10'],
+  [/theat|cinema/i, '#8a5a1e'],
+  [/youtube/i, '#a3160f'],
+];
 
 export const DOMAINS = {
   game: {
@@ -43,7 +89,7 @@ export const DOMAINS = {
         label: 'Platform',
         type: 'chips',
         meta: true,
-        options: ['PlayStation', 'PC', 'Switch', 'Xbox', 'Mobile'],
+        options: PLATFORMS,
       },
       {
         key: 'intent',
@@ -61,6 +107,17 @@ export const DOMAINS = {
     // Trophy counts were more bookkeeping than they were worth — the platinum
     // shelf and the flag above carry the whole story.
     progress: null,
+    presentation: {
+      tint: { field: 'platform' },
+      // A platinum isn't a finished game, it's a thing you keep — so it gets a
+      // case rather than another row in a list. This is the one status in the
+      // app that's a reward instead of a state.
+      shelf: {
+        status: 'platinum',
+        heading: 'The platinum shelf',
+        blurb: 'Everything you saw all the way through.',
+      },
+    },
   },
 
   show: {
@@ -88,6 +145,7 @@ export const DOMAINS = {
       },
     ],
     progress: { label: 'Episodes', current: 'Watched', total: 'Total' },
+    presentation: { tint: { field: 'service', guess: SERVICE_TINTS } },
   },
 
   movie: {
@@ -115,6 +173,7 @@ export const DOMAINS = {
       },
     ],
     progress: null,
+    presentation: { tint: { field: 'service', guess: SERVICE_TINTS } },
   },
 
   book: {
@@ -227,6 +286,41 @@ export const firstStatus = (domain) => DOMAINS[domain]?.statuses[0]?.key ?? 'bac
 // hobbies landing page and the home dashboard.
 export const isUnderway = (item) => item.status === 'active';
 
-// Chip options are either a bare string or a [value, label] pair.
+// Chip options are a bare string, a [value, label] pair, or a
+// [value, label, colour] triple. The colour is optional everywhere it's read.
 export const optionValue = (opt) => (Array.isArray(opt) ? opt[0] : opt);
 export const optionLabel = (opt) => (Array.isArray(opt) ? opt[1] : opt);
+export const optionColor = (opt) => (Array.isArray(opt) ? (opt[2] ?? null) : null);
+
+// The colour for one item, or null. Two ways to arrive at one:
+//   - the field is chips, and the chosen option carries its own colour;
+//   - the field is free text, and a keyword pattern recognises what was typed.
+// Null is the normal answer — nothing here is required, and an item with no
+// tint just renders the way everything did before.
+export function itemTint(spec, item) {
+  const tint = spec?.presentation?.tint;
+  if (!tint) return null;
+  const raw = item?.[tint.field];
+  if (!raw) return null;
+
+  if (tint.guess) {
+    return tint.guess.find(([re]) => re.test(String(raw)))?.[1] ?? null;
+  }
+  const field = spec.fields?.find((f) => f.key === tint.field);
+  const opt = field?.options?.find((o) => optionValue(o) === raw);
+  return opt ? optionColor(opt) : null;
+}
+
+// The label that carries the tint, so the row can render it as a coloured pill
+// rather than dropping it into the joined subtitle text.
+export function tintedLabel(spec, item) {
+  const key = spec?.presentation?.tint?.field;
+  if (!key || !item?.[key]) return null;
+  const field = spec.fields?.find((f) => f.key === key);
+  const opt = field?.options?.find((o) => optionValue(o) === item[key]);
+  return opt ? optionLabel(opt) : String(item[key]);
+}
+
+// The status this domain shows as a case of trophies, if it has one.
+export const shelfFor = (spec, statusKey) =>
+  spec?.presentation?.shelf?.status === statusKey ? spec.presentation.shelf : null;

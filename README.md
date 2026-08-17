@@ -79,7 +79,7 @@ A few of these are worth explaining, because the design decision isn't obvious:
 - **Hobbies** all share one table, one hook and one view. Adding a hobby is one
   entry in `data/collections.js` describing its vocabulary and fields; the
   database keeps the extra fields in a `jsonb` column, so there's no migration
-  either.
+  either. A spec also says how the hobby *looks* — see below.
 - **Facts** is the reference sheet — filter sizes, paint colours, model numbers.
   Values marked secret are masked until tapped, which is cover from a glance at
   the kitchen tablet and *not* encryption; they're stored in plain text like
@@ -128,6 +128,57 @@ for an optional email. **The digest is dormant** — it sends nothing until a
 `RESEND_API_KEY` secret exists, a household opts in, and a `pg_cron` schedule is
 created. Deploying the function alone does nothing; the steps are in a comment
 at the bottom of the file.
+
+## How a hobby looks
+
+The hobby screens were bland for a structural reason, not a lazy one: a domain
+spec could describe its vocabulary and nothing else, so `CollectionView` had no
+choice but to render every domain as the same list. The fix was to let a spec
+describe its own presentation.
+
+```js
+presentation: {
+  tint:  { field, guess },   // which field colours an item, and how
+  shelf: { status, … },      // one status shown as a case of trophies
+}
+```
+
+**Tint** is the console/service colour coding. Two ways to arrive at a colour,
+because the fields differ in kind: `platform` is a chips field, so the chosen
+option carries its own colour as an optional third element
+(`['Switch', 'Switch', '#c4111f']`); `service` is free text, so the colour is
+guessed from what you typed by the same sort of keyword table that
+`data/rooms.js` uses for rooms and `useGroceries` uses for aisles. An
+unrecognised service isn't a problem — it just stays plain text in the subtitle
+rather than disappearing into an uncoloured pill.
+
+The console colours are recognisably each platform's own, but darkened where the
+brand value wouldn't clear 4.5:1 against the white text sitting on it.
+
+**Shelf** is the platinum case. A platinum isn't a finished game, it's a thing
+you keep, and it was the one status in the app that's a reward rather than a
+state — so it gets a display case instead of another row in a list. Trophies are
+drawn rather than uploaded: real cover art would mean Storage, a per-item upload
+and a fallback for when it's missing, and what a platinum commemorates is the
+achievement rather than the box art.
+
+The case is **the one surface that ignores the skin**. Every other screen is a
+room in the house and gets painted to match; a display case is a dark box with a
+light in it and looks the same whatever colour the walls are. Painting it per
+palette would also mean tinting the metal four ways, at which point it stops
+reading as metal. Its tokens live in one block in `index.css`, deliberately
+outside the palettes, and reach the app through `shelf` in `theme.js` rather
+than `colors` — so one can't be reached for by accident somewhere it would look
+wrong.
+
+One thing worth knowing if you add a platform: on the shelf the console colour
+is a wash of light behind the trophy, not coloured text. These colours were
+chosen to carry white text on a light row, and none of them clears 4.5:1 against
+a near-black case — as a glow it's decorative and can be as saturated as the
+brand really is, while the label under it stays legible at 7.25:1.
+
+None of this is required. A domain with no `presentation` key renders exactly as
+it did before, which is what `book`, `making` and `build` still do.
 
 ## Sections you can switch off
 
