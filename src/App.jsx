@@ -37,6 +37,7 @@ const ReleasesView = lazy(() => import('./views/ReleasesView').then((m) => ({ de
 // and neither is ever opened by someone browsing the app normally.
 const SitterView = lazy(() => import('./views/SitterView').then((m) => ({ default: m.SitterView })));
 const HubView = lazy(() => import('./views/HubView').then((m) => ({ default: m.HubView })));
+const WidgetView = lazy(() => import('./views/WidgetView').then((m) => ({ default: m.WidgetView })));
 import { useAuth } from './auth/AuthProvider';
 import { useHousehold } from './household/HouseholdProvider';
 import { SignIn } from './auth/SignIn';
@@ -49,14 +50,22 @@ export default function App() {
   const { household, loading: householdLoading } = useHousehold();
   const [route] = useHashRoute('home');
 
-  // The sitter page is the one route that renders without a session — it's for
-  // someone who doesn't have an account and shouldn't need one. It reads
-  // everything through a token-scoped RPC, so it sits in front of the gate
-  // rather than inside it.
+  // Two routes render without a session, both for the same reason: the thing
+  // reading them has no account. The sitter page is for a person who shouldn't
+  // need one; the widget page is for a phone home screen, which can't have one.
+  // Both go through a token-scoped RPC and touch no table directly, so they sit
+  // in front of the gate rather than inside it.
   if (route.startsWith('sitter/')) {
     return (
       <Suspense fallback={<Splash />}>
         <SitterView token={route.slice('sitter/'.length)} />
+      </Suspense>
+    );
+  }
+  if (route.startsWith('widget/')) {
+    return (
+      <Suspense fallback={<Splash />}>
+        <WidgetView token={route.slice('widget/'.length)} />
       </Suspense>
     );
   }

@@ -8,6 +8,45 @@
 
 export const RELEASES = [
   {
+    version: '1.1.0',
+    date: '2026-08-18',
+    name: 'A term at a time',
+    notes: [
+      [
+        'added',
+        'A real calendar. Day and Week are drawn on an hour grid, to scale, so a 6am shift with a lecture sitting on top of it looks like what it actually is — overlapping things go side by side, there is a line showing where you are in the day, and clicking an empty patch books something at the time you pointed at. Month is for planning, Agenda is for "what\'s coming", and Agenda is the one that reads properly on a phone.',
+      ],
+      [
+        'added',
+        'Repeating events that can stop. Every Monday, Wednesday and Friday until the sixth of November is one entry, not forty-five — and it reads back to you in those words, so you can tell at a glance whether you built the rule you meant to. One occurrence can be cancelled or moved without disturbing the rest, so the week the class didn\'t meet is just gone and the one that shifted to Saturday afternoon says so.',
+      ],
+      [
+        'added',
+        'Calendars, with colours. Family, Work, School and Personal to start with; rename them, recolour them, add your own. Filter the grid down to one when a week gets loud.',
+      ],
+      [
+        'added',
+        'Events that are nobody else\'s business. Every event is visible to the whole house, to you alone, or to you and the people you pick. The important part is that a private event is genuinely unreadable by anyone else — the database enforces it, so it isn\'t merely hidden in the app. And you shouldn\'t have to think about it: anything filed on School or Personal starts private on its own, while a birthday dinner on Family starts shared.',
+      ],
+      [
+        'added',
+        'Scheduled versus worked. A shift used to be worth whatever the rota said, which is fine for salary and fiction for shift work — you clock in at 6:07, lunch runs to an hour and a quarter, you leave at 2:40, and none of that is nine hours. Now you can clock in, take a break and clock out as the day goes, or fix the times up afterwards for the shifts you forgot to punch. Both, because a clock you can\'t correct is worse than no clock and a form at the end of a nine-hour day never gets filled in.',
+      ],
+      [
+        'added',
+        'Jobs, with their own rules: the rate, the unpaid break and when it kicks in, overtime and what counts as a week for it, and how often payday comes round. Two people, two employers, two sets of rules — and someone with two jobs no longer has to average them in their head. Earned is now built around the pay period rather than the calendar month, because a month is not a thing anyone is paid for.',
+      ],
+      [
+        'added',
+        'A link your phone\'s home screen can read. Calendar → Widget makes one per device, and it returns your next few days — including the events only you can see, since it\'s yours. Read-only and revocable. The iOS widget itself is next; everything it needs is already there.',
+      ],
+      [
+        'changed',
+        'Shifts left behind get chased. Anything that has already happened with nothing recorded against it is still counted at its booked hours, so the total is never wrong by a whole day — but it\'s listed and labelled a guess, with one tap to say it went to plan.',
+      ],
+    ],
+  },
+  {
     version: '1.0.0',
     date: '2026-08-16',
     name: 'Settled in',

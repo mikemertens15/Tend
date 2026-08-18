@@ -48,10 +48,11 @@ emails come back to the app.
 
 ## Sections
 
-**Household** — Chores, Meals, Groceries, Pets, Systems, Calendar, Facts.
-**Life** — Hobbies, Goals.
-Plus two views with no nav entry: the **kitchen display** (`#/hub`) and the
-public **sitter page** (`#/sitter/<token>`).
+**Household** — Chores, Meals, Groceries, Pets, Systems, Calendar, Facts, Wishlist.
+**Life** — Hobbies, Goals, Earned.
+Plus three views with no nav entry: the **kitchen display** (`#/hub`), the public
+**sitter page** (`#/sitter/<token>`) and the public **widget feed**
+(`#/widget/<token>`).
 
 A few of these are worth explaining, because the design decision isn't obvious:
 
@@ -144,23 +145,138 @@ dry one named — and a freeze in the forecast, which is the one bit of weather
 that makes work for you whether or not anything was on the list. Both live in
 `data/nudges.js` with everything else that's slipping.
 
+## The calendar
+
+The one rule everything else follows: **a row in `events` is a series, not an
+occurrence.** A class that meets Monday, Wednesday and Friday until December is
+one row, and reading expands it into whatever window you asked about. That's what
+makes entering a semester a thirty-second job instead of forty-five separate
+events, and it's why almost all of the complexity lives in the difference between
+the two.
+
+- **Repeat rules** are as much of RRULE as a household actually types: a
+  frequency, an interval, a set of weekdays, and one of two ways to stop.
+  `data/recurrence.js` expands them and — just as important — says them out
+  loud, because the only way to know you built the rule you meant is to read it
+  back in English.
+- **Monthly and yearly rules clamp rather than skip.** A bill on the 31st lands
+  on the 28th in February; a 29 February anniversary lands on the 28th in a
+  normal year. RFC 5545 would drop those occurrences, which is correct by the
+  spec and wrong for a house — the bill is still due.
+- **One occurrence can disagree with its series.** `event_exceptions` holds
+  cancellations and changes, keyed by the date the *rule* produced — which stays
+  that occurrence's name even after it's been moved somewhere else, so moving one
+  twice doesn't lose track of which one it was. Editing a repeating event asks
+  which you meant: this one, this and everything after, or all of them. "This and
+  future" splits the series in two rather than rewriting history, so last term
+  still looks like last term.
+- **Day and Week are drawn to scale** on an hour grid. `data/layout.js` is pure
+  geometry, and the awkward part it exists for is that "how wide is this block"
+  isn't a property of the block: overlapping events are grouped into runs, packed
+  into columns, then allowed to widen rightwards through any column nothing
+  overlapping occupies. Otherwise a quiet morning gets drawn as slivers because
+  the afternoon is busy.
+- **Chores sit in the all-day band**, not in the hours. They have a date and no
+  time, and inventing 9am for the bins would be a lie the grid would then draw to
+  scale.
+- **Calendars are colour, and colour is a privacy setting.** A calendar carries a
+  `default_visibility`, so filing a lecture on School makes it yours without
+  anyone answering a question about permissions. Calendar colours are real hex
+  values rather than theme tokens, like member avatars and for the same reason —
+  they're stored per household, so they have to survive outside the stylesheet.
+  Nothing paints text on one: the saturated value is used for bars and dots, and
+  the fill behind a block is that colour at low alpha, which composites over
+  whichever skin is underneath.
+
+### Who can see what
+
+Every event is `household`, `private` (the member it belongs to) or `members`
+(them plus the people named in `visible_to`). The part worth stating plainly:
+
+- **It's enforced by row-level security, not by the query.** The app could simply
+  not ask for other people's private events and it would look identical right up
+  until someone opened the network tab. A private event never reaches the browser.
+- `private.current_member_id()` and `private.can_see_event()` are `SECURITY
+  DEFINER` with a pinned `search_path`, matching `is_household_member`. The
+  predicate is inlined into the `events` policies (a per-row function that
+  re-reads its own row turns one index scan into one query per event) and called
+  by name from `event_exceptions` and `work_shifts`, so a cancellation or a
+  timesheet can't leak what the event itself won't.
+- `update` and `delete` carry the same predicate as `select`. Without that, a
+  private event is readable by id through a blind `UPDATE … RETURNING`.
+- A check constraint refuses any visibility narrower than the household without a
+  `member_id` to narrow it *to* — otherwise "private" has no owner and the row is
+  visible to nobody at all.
+
 ## Earned
 
-A shift is a `work` event on the calendar, not a new table. That's the whole
-design: you were already putting work on the calendar, so there is nothing extra
-to enter and nothing to keep in sync. `end_time` already existed on `events` and
-had simply never been used; hours come from the two times, money is hours × your
-rate, and rates live in the settings jsonb. No migration was needed at all.
+A shift is still a `work` event on the calendar, not a second list: you were
+already putting your rota somewhere. What changed is that **scheduled and worked
+are now allowed to disagree.**
 
-`dates.js` owns `shiftHours`, and the case it exists for is a shift that crosses
-midnight: 10pm–6am is eight hours, not minus sixteen, and getting it wrong pays
-a negative wage for every night shift.
+You book 6 to 3, clock in at 6:07, lunch runs to an hour and a quarter, you leave
+at 2:40. Four numbers, none of them nine hours. So a `work_shifts` row records
+what the clock said, keyed by `(event_id, occurrence_date)` — which is what makes
+it work for a repeating rota, where one event is many days that each need their
+own answer. You can punch in and out as the day goes, or type it in afterwards
+for the shifts you forgot, and neither is the "real" one: a clock you can't
+correct is worse than no clock, and a form at the end of a nine-hour day never
+gets filled in.
 
-What this deliberately is **not** is payroll. No tax, no withholding, no
-overtime multiplier, no PTO. Those vary by state, employer and week, and a
-number that's confidently wrong about your pay is worse than no number.
-`takeHomePct` is the one concession — a single percentage you read off a real
-payslip, labelled as the estimate it is.
+- **Jobs** carry the rules that change the number: the rate, the unpaid break and
+  the shift length that triggers it, overtime and what counts as a week for it,
+  and the pay cycle. Overtime is a property of a *week*, not a shift — the ninth
+  hour on Thursday is only overtime depending on what Monday to Wednesday came
+  to — which is why it can't live in `resolveShift`. Where a job has both a daily
+  and a weekly rule, the greater applies and no hour is counted twice.
+- **A shift that has already happened with nothing recorded** is counted at its
+  booked hours, so a total is never wrong by a whole day, and then listed as a
+  guess with one tap to confirm it. Counting nothing would be quietly wrong;
+  counting it silently would be worse.
+- **`dates.js` owns the midnight-wrap rule** in one place: an end at or before
+  the start means the span crossed midnight. 10pm–6am is eight hours, not minus
+  sixteen, and getting it wrong pays a negative wage for every night shift.
+
+What this deliberately is **not** is payroll. No tax, no withholding, no PTO
+accrual, no shift differentials, no employer rounding rules. Breaks and overtime
+are modelled because they move the hours by amounts you'd notice; everything past
+that varies by state, employer and week, and a number that's confidently wrong
+about your pay is worse than no number. `take_home_pct` is the one concession — a
+single percentage read off a real payslip, labelled as the estimate it is.
+
+## The phone widget
+
+`#/widget/<token>` is the app's second public surface, and the more sensitive of
+the two, so the shape is worth stating as plainly as the sitter page's.
+
+- A widget token belongs to **one member**, not the household, because the point
+  is that it shows *your* day — private events included. A widget that hid your
+  own calendar from you would be useless.
+- Only that member can list, create or revoke their own tokens: the RLS policy on
+  `widget_tokens` is keyed on the member, so another person in the same house
+  gets an empty list rather than a URL that reads your private calendar.
+- The tables gain **no anon policies**. Everything a token holder can reach goes
+  through `public.widget_agenda`, one `SECURITY DEFINER` function with a pinned
+  `search_path` that validates the token and returns one whitelisted shape.
+- It is **read-only** — unlike the sitter link, there is no write path.
+- Tokens come from a database default, never the browser, and can be revoked or
+  given an expiry.
+
+A leaked widget token is therefore worth one person's next fortnight of
+appointments, until it's turned off.
+
+The page itself is a reference rendering rather than something anyone will use
+daily: it proves the endpoint works with no session, and gives the SwiftUI
+version something to be compared against. `docs/ios-widget.md` is the handover —
+the payload schema, the `curl` that returns it, and what's left to build on a Mac.
+
+**Recurrence is expanded twice, on purpose.** `data/recurrence.js` runs in the
+browser so paging the calendar costs no round trip;
+`private.occurrence_dates` / `private.agenda_rows` run in Postgres because a
+widget has no browser. It's the same arrangement `supabase/functions/daily-digest`
+already uses for the nudge rules. The rule set is kept small so "change one,
+change the other" is a realistic instruction, and both were checked against the
+same set of awkward cases.
 
 ## The wishlist
 
@@ -325,7 +441,7 @@ src/
   theme.js           # design tokens, as CSS custom property references
   index.css          # the two skins (warm / dark wall display)
   useTheme.js        # skin switching + persistence
-  dates.js           # week / greeting / "today" helpers
+  dates.js           # week / greeting / "today" / time-of-day helpers
   useHashRoute.js    # dependency-free hash router
   useLastSeen.js     # how long since this device saw the dashboard
   lib/supabase.js    # configured Supabase browser client
@@ -333,12 +449,23 @@ src/
   household/         # HouseholdProvider (members, settings), Onboarding, modal
   data/              # one hook per section + collections.js, cadence.js,
                      #   nudges.js, catchup.js, releases.js
+    recurrence.js    #   repeat rules: expansion, and saying them in English
+    layout.js        #   packing overlapping events into columns on a day grid
+    pay.js           #   breaks, overtime, pay periods — what a shift is worth
+    calendars.js     #   calendar colours, tinting, and kind → calendar guessing
   components/        # nav, modals, shared UI
   views/             # one per section
+docs/
+  ios-widget.md      # the handover for the native widget: endpoint, payload, plan
 public/
   sw.js              # network-first service worker (installability, not offline editing)
   manifest.webmanifest
 ```
+
+`recurrence.js`, `layout.js` and `pay.js` are pure — no React, no database, no
+clock they didn't get handed. That's deliberate: they hold the rules that are
+wrong by fifteen minutes in ways you only notice on payday, and being able to
+read them end to end is the point.
 
 The schema, RLS policies and the `create_household` / `join_household` RPCs live
 as Supabase migrations on the project.
@@ -406,8 +533,17 @@ when you ask for it.
 - **Web Push.** `push_subscriptions` exists and is empty. Needs VAPID keys, a
   `push` listener in `public/sw.js`, and a sender — the natural sibling of
   `supabase/functions/daily-digest`.
-- **Capacitor + a WidgetKit extension**, for home-screen widgets. Needs the
-  Apple Developer account and an Xcode build.
+- **The WidgetKit extension itself.** The endpoint, the tokens, the payload and a
+  reference rendering all exist and are checked; what's left is a SwiftUI app
+  target and a widget extension, which need a Mac. `docs/ios-widget.md` is the
+  handover, down to the timeline policy and where the token should live.
+- **Clocking in from the widget.** It's read-only today. The write path would be
+  a second `SECURITY DEFINER` function taking the same token and confined to one
+  row shape in `work_shifts`, exposed as an `AppIntent` — the same pattern
+  `sitter_toggle_meal` already uses.
+- **Subscribing to an external calendar** (a school's published `.ics`). Needs an
+  edge function to fetch and parse it, since a browser can't for CORS, and a
+  decision about how imported events map onto the repeat rules above.
 - Email invites alongside the shareable join code.
 - Photos on workshop projects and pets (Supabase Storage).
 - Turn on leaked-password protection in the Supabase auth settings — it's a

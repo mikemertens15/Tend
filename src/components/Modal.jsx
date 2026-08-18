@@ -6,7 +6,10 @@ import { useHousehold } from '../household/HouseholdProvider';
 // Shared dialog chrome for the add/edit modals: dimmed backdrop, cream card,
 // title row with a close button, Escape-to-close. Children are the form body;
 // the footer renders the caller's action buttons right-aligned.
-export function ModalShell({ title, onClose, children, footer }) {
+// `width` is for the two dialogs that hold a whole form rather than a question
+// — the event editor and a job's pay rules. Everything else takes the default,
+// because a dialog wider than its content reads as an empty one.
+export function ModalShell({ title, onClose, children, footer, width = 460 }) {
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onClose();
@@ -37,7 +40,7 @@ export function ModalShell({ title, onClose, children, footer }) {
         aria-modal="true"
         aria-label={title}
         style={{
-          width: 460,
+          width,
           maxWidth: '100%',
           maxHeight: '90vh',
           overflowY: 'auto',

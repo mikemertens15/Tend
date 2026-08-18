@@ -76,20 +76,85 @@ export function addDays(dayString, n) {
   return dayStr(d);
 }
 
-// Hours between two Postgres times, or null when either is missing.
+// ---------------------------------------------------------------------------
+// Times of day
+// ---------------------------------------------------------------------------
 //
-// An end before the start means the shift crossed midnight rather than that
-// someone typed it backwards — 10pm–6am is eight hours, not minus sixteen, and
-// getting this wrong would pay you a negative wage for every night shift.
-export function shiftHours(start, end) {
-  if (!start || !end) return null;
-  const mins = (t) => {
-    const [h, m] = t.split(':').map(Number);
-    return h * 60 + m;
-  };
-  const span = mins(end) - mins(start);
-  return Math.round(((span <= 0 ? span + 1440 : span) / 60) * 100) / 100;
+// A Postgres `time` column arrives as 'HH:MM:SS'. Everything below works in
+// minutes since midnight, because that's what positioning a block on a day
+// grid needs and it makes the midnight-wrap rule below expressible once.
+
+export function parseTime(t) {
+  if (!t) return null;
+  const [h, m] = t.split(':').map(Number);
+  if (Number.isNaN(h)) return null;
+  return h * 60 + (m || 0);
 }
+
+// Minutes since midnight back to 'HH:MM', which is what a time input wants.
+export function timeStr(minutes) {
+  if (minutes == null) return '';
+  const wrapped = ((minutes % 1440) + 1440) % 1440;
+  const p = (n) => String(n).padStart(2, '0');
+  return `${p(Math.floor(wrapped / 60))}:${p(wrapped % 60)}`;
+}
+
+// "4:30 PM", and "4 PM" on the hour — the minutes are noise when they're zero
+// and these labels sit in tight calendar cells.
+export function timeLabel(t) {
+  const mins = typeof t === 'number' ? t : parseTime(t);
+  if (mins == null) return null;
+  const h = Math.floor((((mins % 1440) + 1440) % 1440) / 60);
+  const m = (((mins % 1440) + 1440) % 1440) % 60;
+  const period = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return m === 0 ? `${hour} ${period}` : `${hour}:${String(m).padStart(2, '0')} ${period}`;
+}
+
+// "9:30 – 10:45 AM": the period is dropped from the start when both ends share
+// it, which is how a person writes it down.
+export function timeRangeLabel(start, end) {
+  const a = timeLabel(start);
+  if (!a) return null;
+  const b = timeLabel(end);
+  if (!b) return a;
+  const sameHalf = a.slice(-2) === b.slice(-2);
+  return `${sameHalf ? a.slice(0, -3) : a} – ${b}`;
+}
+
+// The wrap rule, in one place: an end at or before the start means the span
+// crossed midnight rather than that someone typed it backwards. 10pm–6am is
+// eight hours, not minus sixteen, and getting it wrong would pay a negative
+// wage for every night shift.
+export function spanMinutes(start, end) {
+  const a = parseTime(start);
+  const b = parseTime(end);
+  if (a == null || b == null) return null;
+  const span = b - a;
+  return span <= 0 ? span + 1440 : span;
+}
+
+// Hours between two times, to two places, or null when either is missing.
+export function shiftHours(start, end) {
+  const mins = spanMinutes(start, end);
+  return mins == null ? null : Math.round((mins / 60) * 100) / 100;
+}
+
+// "8h 15m" — hours alone read as a wage calculation, and a decimal like 8.25
+// is hard to check against a memory of the day.
+export function hoursLabel(hours) {
+  if (hours == null) return null;
+  const total = Math.round(hours * 60);
+  const h = Math.floor(Math.abs(total) / 60);
+  const m = Math.abs(total) % 60;
+  const sign = total < 0 ? '-' : '';
+  if (h === 0) return `${sign}${m}m`;
+  return m === 0 ? `${sign}${h}h` : `${sign}${h}h ${m}m`;
+}
+
+// Month names, exported so the views stop each keeping their own copy.
+export const MONTH_NAMES = MONTHS_LONG;
+export const monthName = (d) => MONTHS_LONG[d.getMonth()];
 
 export function monthYear(d) {
   return `${MONTHS_SHORT[d.getMonth()]} ${d.getFullYear()}`;
