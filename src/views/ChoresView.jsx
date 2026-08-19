@@ -14,12 +14,13 @@ import { matchesOwner } from '../data/owner';
 // finite number of jobs and a visible end — so the room is the unit here, and
 // the two things that decide what you actually do next (how long have I got,
 // whose turn is it) are the filters on top.
-export function ChoresView({ tasks, onToggle, onAdd }) {
+export function ChoresView({ tasks, onToggle, onAdd, onEditTask, onRemoveMany }) {
   const narrow = useIsNarrow();
   const { order } = useHousehold();
   const [who, setWho] = useState('all');
   const [minutes, setMinutes] = useState(null);
   const [showDone, setShowDone] = useState(false);
+  const [confirmingClear, setConfirmingClear] = useState(false);
 
   const chores = tasks.filter((t) => t.cat === 'chore');
   // Unassigned chores are everyone's, so they show under every filter.
@@ -161,24 +162,61 @@ export function ChoresView({ tasks, onToggle, onAdd }) {
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: narrow ? '1fr' : 'repeat(auto-fit, minmax(330px, 1fr))', gap: 18, alignItems: 'start' }}>
           {rooms.map((room) => (
-            <RoomCard key={room.key} room={room} showDone={showDone} onToggle={onToggle} />
+            <RoomCard key={room.key} room={room} showDone={showDone} onToggle={onToggle} onEditTask={onEditTask} />
           ))}
         </div>
       )}
 
       {done.length > 0 && (
-        <button
-          onClick={() => setShowDone((s) => !s)}
-          style={{ display: 'block', margin: '20px auto 0', font: `600 12.5px ${fonts.sans}`, color: colors.muted2, background: colors.chipBg, padding: '8px 16px', borderRadius: 20 }}
-        >
-          {showDone ? 'Hide' : 'Show'} {done.length} finished
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => {
+              setShowDone((s) => !s);
+              setConfirmingClear(false);
+            }}
+            style={{ font: `600 12.5px ${fonts.sans}`, color: colors.muted2, background: colors.chipBg, padding: '8px 16px', borderRadius: 20 }}
+          >
+            {showDone ? 'Hide' : 'Show'} {done.length} finished
+          </button>
+
+          {/* Ticking a repeating chore books the next one, so five taps down the
+              board leaves five finished rows behind. Sweeping them out needs to
+              be one action rather than five trips through the editor — but it's
+              a real delete, so it asks first. */}
+          {showDone &&
+            (confirmingClear ? (
+              <>
+                <button
+                  onClick={() => {
+                    onRemoveMany(done.map((t) => t.id));
+                    setConfirmingClear(false);
+                  }}
+                  style={{ font: `600 12.5px ${fonts.sans}`, color: colors.onAccent, background: tone.red, padding: '8px 16px', borderRadius: 20 }}
+                >
+                  Delete {done.length} for good
+                </button>
+                <button
+                  onClick={() => setConfirmingClear(false)}
+                  style={{ font: `600 12.5px ${fonts.sans}`, color: colors.muted2, padding: '8px 6px' }}
+                >
+                  Keep them
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setConfirmingClear(true)}
+                style={{ font: `600 12.5px ${fonts.sans}`, color: tone.red, background: colors.chipBg, padding: '8px 16px', borderRadius: 20 }}
+              >
+                Clear finished
+              </button>
+            ))}
+        </div>
       )}
     </div>
   );
 }
 
-function RoomCard({ room, showDone, onToggle }) {
+function RoomCard({ room, showDone, onToggle, onEditTask }) {
   const total = room.all.length;
   const complete = room.done.length;
   const pct = total ? Math.round((complete / total) * 100) : 0;
@@ -235,7 +273,14 @@ function RoomCard({ room, showDone, onToggle }) {
             }}
           >
             <Check done={t.done} onClick={() => onToggle(t.id)} />
-            <div style={{ flex: 1, minWidth: 0 }}>
+            {/* The checkbox is the whole of the common case, so everything else
+                on the row opens the editor. Tapping the words to change them is
+                what people try first anyway. */}
+            <button
+              onClick={() => onEditTask?.(t)}
+              title="Edit this chore"
+              style={{ flex: 1, minWidth: 0, textAlign: 'left' }}
+            >
               <div
                 style={{
                   font: `600 13.5px ${fonts.sans}`,
@@ -248,7 +293,7 @@ function RoomCard({ room, showDone, onToggle }) {
               <div style={{ font: `400 11.5px ${fonts.sans}`, color: colors.muted, marginTop: 1 }}>
                 {[effortLabel(t.effortMinutes), t.repeatLabel, t.who].filter(Boolean).join(' · ') || 'Anyone'}
               </div>
-            </div>
+            </button>
             {t.who && <Avatar who={t.who} size={24} />}
             <Pill task={t} />
           </div>

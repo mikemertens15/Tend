@@ -8,6 +8,25 @@
 
 export const RELEASES = [
   {
+    version: '1.1.1',
+    date: '2026-08-19',
+    name: 'Second thoughts',
+    notes: [
+      [
+        'added',
+        'Tasks can be edited. Tap the words on any chore — on the board or in Up next — and the whole thing opens: the title, the room, how long it takes, when it\'s due, how often it repeats, whose it is. Until now the only thing you could do to a task was tick it, which meant a typo or a wrong room was permanent.',
+      ],
+      [
+        'added',
+        'And deleted. One at a time from the editor, or the whole finished pile at once — "Clear finished" under the board. Both ask twice, because there\'s no archive to fetch it back from.',
+      ],
+      [
+        'fixed',
+        'Ticking off a daily chore books tomorrow\'s straight away, which is the point of a repeat — but it also means a few absent-minded taps walk the whole week forward and leave a row of finished chores behind you. There was no way to clear those out. Now there is, and a task you ticked by accident says so when you open it, with the way back on the same line.',
+      ],
+    ],
+  },
+  {
     version: '1.1.0',
     date: '2026-08-18',
     name: 'A term at a time',

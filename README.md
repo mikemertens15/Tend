@@ -76,7 +76,12 @@ A few of these are worth explaining, because the design decision isn't obvious:
 - **Chores are dated, not slotted.** `due_on` is the only stored schedule; the
   overdue/today/soon bucket, the pill text and the calendar column are all
   derived from it, so they can't disagree. `repeat_days` makes a chore a habit —
-  completing one books the next.
+  completing one books the next. That last part has a sharp edge worth knowing
+  about: because ticking one books tomorrow's immediately, a few absent-minded
+  taps walk the series forward and leave a row of finished chores behind. So the
+  finished pile can be cleared in one go, and a task opened after being ticked
+  says so and offers the way back. The checkbox is the only thing on a task row
+  that ticks it; the rest of the row opens the editor.
 - **Hobbies** all share one table, one hook and one view. Adding a hobby is one
   entry in `data/collections.js` describing its vocabulary and fields; the
   database keeps the extra fields in a `jsonb` column, so there's no migration

@@ -11,7 +11,7 @@ import { useMeals } from './data/useMeals';
 import { useGoals } from './data/useGoals';
 import { TopNav } from './components/TopNav';
 import { MobileNav } from './components/MobileNav';
-import { AddTaskModal } from './components/AddTaskModal';
+import { TaskModal } from './components/TaskModal';
 import { sectionByKey } from './data/collections';
 
 // Home and Chores load with the app: one of them is where you land, and the
@@ -86,7 +86,10 @@ function Dashboard() {
   const [view, navigate] = useHashRoute('home');
   const phone = useIsPhone();
   const { session } = useAuth();
-  const [modalOpen, setModalOpen] = useState(false);
+  // null when closed, { task: null } to add one, { task } to edit that one. Held
+  // here rather than per-view because Home and Chores both open the same dialog,
+  // and two copies of it is how they'd drift apart.
+  const [taskModal, setTaskModal] = useState(null);
   const [householdOpen, setHouseholdOpen] = useState(false);
   // Held here rather than in HomeView so that dismissing the welcome-back card
   // and then wandering off to Chores doesn't bring it straight back — Home
@@ -127,7 +130,7 @@ function Dashboard() {
   // doesn't fetch and subscribe to every table in the database. The four here
   // get told whether their section is on, so switching one off really does stop
   // the queries rather than just hiding the card.
-  const { tasks, toggle, addTask, rollForward } = useTasks();
+  const { tasks, toggle, addTask, updateTask, removeTask, removeTasks, rollForward } = useTasks();
   const { systems, addSystem, updateSystem, removeSystem, markDone } = useSystems({ enabled: isOn('systems') });
   const { mealsByKey, setMeal, removeMeal } = useMeals({ enabled: isOn('meals') });
   const goals = useGoals({ enabled: isOn('goals') });
@@ -150,7 +153,7 @@ function Dashboard() {
         view={active}
         setView={navigate}
         hobbyRoute={Boolean(hobbySection) && reachable}
-        onAdd={() => setModalOpen(true)}
+        onAdd={() => setTaskModal({ task: null })}
         onOpenHousehold={() => setHouseholdOpen(true)}
       />
 
@@ -178,6 +181,7 @@ function Dashboard() {
             goals={goals.active}
             week={week}
             onToggle={toggle}
+            onEditTask={(task) => setTaskModal({ task })}
             navigate={navigate}
             awayDays={awayDays}
             catchUpDismissed={catchUpDismissed}
@@ -185,7 +189,15 @@ function Dashboard() {
             onRollForward={rollForward}
           />
         )}
-        {active === 'chores' && <ChoresView tasks={tasks} onToggle={toggle} onAdd={() => setModalOpen(true)} />}
+        {active === 'chores' && (
+          <ChoresView
+            tasks={tasks}
+            onToggle={toggle}
+            onAdd={() => setTaskModal({ task: null })}
+            onEditTask={(task) => setTaskModal({ task })}
+            onRemoveMany={removeTasks}
+          />
+        )}
         {active === 'systems' && (
           <SystemsView
             systems={systems}
@@ -218,7 +230,15 @@ function Dashboard() {
 
       {phone && <MobileNav view={active} setView={navigate} hobbyRoute={Boolean(hobbySection) && reachable} />}
 
-      {modalOpen && <AddTaskModal onClose={() => setModalOpen(false)} onAdd={addTask} />}
+      {taskModal && (
+        <TaskModal
+          task={taskModal.task}
+          onClose={() => setTaskModal(null)}
+          onSave={(fields) => (taskModal.task ? updateTask(taskModal.task.id, fields) : addTask(fields))}
+          onDelete={removeTask}
+          onToggle={toggle}
+        />
+      )}
       {householdOpen && <HouseholdModal onClose={() => setHouseholdOpen(false)} />}
     </div>
   );

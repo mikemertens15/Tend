@@ -21,6 +21,7 @@ export function HomeView({
   goals = [],
   week,
   onToggle,
+  onEditTask,
   navigate,
   awayDays = 0,
   catchUpDismissed = false,
@@ -211,7 +212,11 @@ export function HomeView({
         {upNext.map((t) => (
           <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 0', borderTop: `1px solid ${colors.divider}` }}>
             <Check done={t.done} onClick={() => onToggle(t.id)} />
-            <div style={{ flex: 1, minWidth: 0 }}>
+            <button
+              onClick={() => onEditTask?.(t)}
+              title="Edit this task"
+              style={{ flex: 1, minWidth: 0, textAlign: 'left' }}
+            >
               <div
                 style={{
                   font: `600 14px ${fonts.sans}`,
@@ -224,7 +229,7 @@ export function HomeView({
               <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
                 {catLabel[t.cat]} · {t.note || t.who || 'Anyone'}
               </div>
-            </div>
+            </button>
             <Pill task={t} />
           </div>
         ))}

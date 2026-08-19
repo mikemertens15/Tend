@@ -33,7 +33,6 @@ export function useTasks() {
   const [rows, setRows] = useState([]);
 
   const nameById = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m.name])), [members]);
-  const idByName = useMemo(() => Object.fromEntries(members.map((m) => [m.name, m.id])), [members]);
 
   const fetchTasks = useCallback(async () => {
     if (!householdId) {
@@ -78,6 +77,10 @@ export function useTasks() {
         title: r.title,
         cat: r.cat,
         who: nameById[r.assignee_id] ?? null,
+        // The id as well as the name: `who` is what the views display and filter
+        // on, but the edit form has to hand back the same person it was given,
+        // and two members can share a name.
+        assigneeId: r.assignee_id ?? null,
         note: r.note ?? undefined,
         done: r.done,
         room: r.room ?? 'whole',
@@ -137,33 +140,48 @@ export function useTasks() {
   );
 
   const addTask = useCallback(
-    async ({ title, cat, who, note, dueOn, repeatDays, room, effortMinutes }) => {
+    async (fields) => {
       if (!householdId) return;
-      const { error } = await supabase.from('tasks').insert({
-        household_id: householdId,
-        title: (title || '').trim() || 'Untitled task',
-        cat,
-        assignee_id: idByName[who] ?? null,
-        note: (note || '').trim() || null,
-        due_on: dueOn || dayStr(),
-        repeat_days: repeatDays ?? null,
-        room: room || 'whole',
-        effort_minutes: effortMinutes ?? null,
-        done: false,
-      });
+      const { error } = await supabase
+        .from('tasks')
+        .insert({ household_id: householdId, ...taskColumns(fields), done: false });
       if (!error) fetchTasks();
     },
-    [householdId, idByName, fetchTasks],
+    [householdId, fetchTasks],
   );
 
-  const removeTask = useCallback(
-    async (id) => {
-      setRows((rs) => rs.filter((r) => r.id !== id));
-      const { error } = await supabase.from('tasks').delete().eq('id', id);
+  // Editing a task changes the task and nothing else. In particular it doesn't
+  // touch `done`, and it doesn't reach forward into an occurrence that has
+  // already been booked: changing a chore from daily to weekly means the *next*
+  // one it books is a week out, not that tomorrow's — already sitting on the
+  // board — moves.
+  const updateTask = useCallback(
+    async (id, fields) => {
+      const patch = taskColumns(fields);
+      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+      const { error } = await supabase.from('tasks').update(patch).eq('id', id);
       if (error) fetchTasks();
     },
     [fetchTasks],
   );
+
+  // Deleting is deleting. There's no archive to fall back on, which is why both
+  // callers ask twice — but a finished chore you never meant to tick off has to
+  // be removable, and "mark it not done" leaves a job on the board that nobody
+  // is going to do.
+  const removeTasks = useCallback(
+    async (ids) => {
+      const list = (Array.isArray(ids) ? ids : [ids]).filter(Boolean);
+      if (list.length === 0) return;
+      const set = new Set(list);
+      setRows((rs) => rs.filter((r) => !set.has(r.id)));
+      const { error } = await supabase.from('tasks').delete().in('id', list);
+      if (error) fetchTasks();
+    },
+    [fetchTasks],
+  );
+
+  const removeTask = useCallback((id) => removeTasks([id]), [removeTasks]);
 
   // Re-date overdue work to today. Used by the catch-up card on the dashboard
   // when a rhythm has been broken by an absence.
@@ -184,7 +202,22 @@ export function useTasks() {
     [fetchTasks],
   );
 
-  return { tasks, toggle, addTask, removeTask, rollForward };
+  return { tasks, toggle, addTask, updateTask, removeTask, removeTasks, rollForward };
+}
+
+// The columns a task form owns, in one place, so adding and editing can't drift
+// into disagreeing about what a task is.
+function taskColumns({ title, cat, assigneeId, note, dueOn, repeatDays, room, effortMinutes }) {
+  return {
+    title: (title || '').trim() || 'Untitled task',
+    cat,
+    assignee_id: assigneeId ?? null,
+    note: (note || '').trim() || null,
+    due_on: dueOn || dayStr(),
+    repeat_days: repeatDays ?? null,
+    room: room || 'whole',
+    effort_minutes: effortMinutes ?? null,
+  };
 }
 
 // Step forward by the repeat interval until the date is actually ahead of us,
