@@ -18,6 +18,9 @@ It started as a home-maintenance board answering one question every week:
 - **No component library and no CSS framework.** Styling is inline objects
   reading design tokens from `theme.js`; the tokens are CSS custom properties,
   which is what makes the two skins work.
+- **Capacitor + WidgetKit** — the same web build, shipped as a real iOS app with
+  two home-screen widgets and native push. No second codebase: the Swift is the
+  shell, the widgets and the bridge between them. See [docs/ios.md](docs/ios.md).
 
 ## Run it
 
@@ -31,6 +34,18 @@ npm run dev
 
 `npm run build` produces `dist/`, `npm run preview` serves it, `npm run lint`
 runs oxlint.
+
+### On a phone
+
+```bash
+npm run ios:sync
+```
+
+Builds the web app, copies it into the native project and re-applies the widget
+target; `npm run ios:open` then opens Xcode. The assets are **bundled**, not
+loaded from a URL, so a web change that hasn't been synced isn't in the app.
+[docs/ios.md](docs/ios.md) has the rest, including what still needs your Apple
+Developer account.
 
 ### Backend config
 
@@ -213,6 +228,50 @@ Every event is `household`, `private` (the member it belongs to) or `members`
   `member_id` to narrow it *to* — otherwise "private" has no owner and the row is
   visible to nobody at all.
 
+## Bills
+
+A bill is an event, the same way a shift is. Rent is a monthly thing with a date,
+which is exactly what `events` already models — so putting it there means bills
+inherit the recurrence engine, "skip this month", calendar colours, visibility
+and RLS without a line of any of it being written twice. Two nullable columns
+carry what an appointment doesn't need (`amount_cents`, `autopay`); the
+precedent is `job_id`, which is just as kind-specific.
+
+**Money is integer cents everywhere.** `0.1 + 0.2` is the oldest bug in the
+trade and rent is not the place to rediscover it.
+
+### Paid is a row, not a flag
+
+"Rent" is one row and there are twelve answers a year, so a flag has nowhere to
+live. `bill_payments` holds one row per settled occurrence, keyed on
+`(event_id, occurrence_date)` — the same shape `work_shifts` uses, guarded by
+the same `private.can_see_event()`, so a private bill's payments are private
+too. It records what *actually* left the account, which is not always what was
+expected.
+
+### Three judgements worth stating
+
+- **An amount can be unknown.** A utility that varies is `null`, and renders as
+  `—`, never `$0` — a zero would quietly under-count every total on the page. So
+  the totals say "$420 + 2 not yet priced" rather than pretending to be complete.
+  Same reasoning as the wishlist's.
+- **Autopay settles itself.** A bill the bank pays is settled once its date
+  passes, whether or not anyone ticked it. Without that rule an autopay
+  electricity bill grows one permanent "overdue" row a month until the widget is
+  nothing but false alarms. It still shows *before* the date, because money
+  about to move is worth knowing about.
+- **Bills ignore the visible window.** Every other thing on the calendar answers
+  "what's happening in the days I'm looking at". A bill answers "what leaves the
+  account soon", so paging to next March doesn't change the strip — and a bill
+  that slipped last month stays visible instead of falling off the back. Overdue
+  chores sit above the grid for the same reason.
+
+That rule about autopay is stated in three places — `isSettled` in
+`data/bills.js`, `public.widget_agenda`, and `public.bill_reminders_for`. It has
+to be: the browser, the widget and the notification each decide independently
+whether to nag you, and two of them have no JavaScript. Change one, change all
+three.
+
 ## Earned
 
 A shift is still a `work` event on the calendar, not a second list: you were
@@ -272,8 +331,15 @@ appointments, until it's turned off.
 
 The page itself is a reference rendering rather than something anyone will use
 daily: it proves the endpoint works with no session, and gives the SwiftUI
-version something to be compared against. `docs/ios-widget.md` is the handover —
-the payload schema, the `curl` that returns it, and what's left to build on a Mac.
+version something to be compared against — if the two disagree, one of them is
+wrong. `docs/ios-widget.md` is the payload contract; [docs/ios.md](docs/ios.md)
+is the app.
+
+There are two widgets on the home screen, both reading that one endpoint:
+**Bills** (small, medium, large, plus lock screen) and **Agenda**. The token
+reaches the extension through an App Group rather than the webview's
+`localStorage`, which the extension can't see — Calendar → 📱 Widget → **Use on
+this phone** is the handoff.
 
 **Recurrence is expanded twice, on purpose.** `data/recurrence.js` runs in the
 browser so paging the calendar costs no round trip;
@@ -458,17 +524,29 @@ src/
     layout.js        #   packing overlapping events into columns on a day grid
     pay.js           #   breaks, overtime, pay periods — what a shift is worth
     calendars.js     #   calendar colours, tinting, and kind → calendar guessing
+    bills.js         #   money in cents, and what "settled" and "overdue" mean
+    native.js        #   the iOS-only bits: widget handoff, push, deep links
+    usePush.js       #   this device's notification registration
   components/        # nav, modals, shared UI
   views/             # one per section
+ios/
+  add-widget-target.rb  # re-adds the widget extension after a `cap sync`
+  App/App/           # the Capacitor shell + TendBridgePlugin.swift
+  App/Shared/        # compiled into BOTH targets: models, API client, theme
+  App/TendWidget/    # the WidgetKit extension — Bills and Agenda
 docs/
-  ios-widget.md      # the handover for the native widget: endpoint, payload, plan
+  ios.md             # the iOS app: build workflow, widgets, push, what's left
+  ios-widget.md      # the endpoint contract: payload schema and security shape
+supabase/functions/
+  daily-digest/      # the once-a-day email (dormant until configured)
+  push-reminders/    # APNs bill reminders (dormant until configured)
 public/
   sw.js              # network-first service worker (installability, not offline editing)
   manifest.webmanifest
 ```
 
-`recurrence.js`, `layout.js` and `pay.js` are pure — no React, no database, no
-clock they didn't get handed. That's deliberate: they hold the rules that are
+`recurrence.js`, `layout.js`, `pay.js` and `bills.js` are pure — no React, no
+database, no clock they didn't get handed. That's deliberate: they hold the rules that are
 wrong by fifteen minutes in ways you only notice on payday, and being able to
 read them end to end is the point.
 

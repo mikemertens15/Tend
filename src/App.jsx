@@ -5,6 +5,7 @@ import { useHashRoute } from './useHashRoute';
 import { useIsPhone } from './useMediaQuery';
 import { useLastSeen } from './useLastSeen';
 import { useSections } from './data/useSections';
+import { startNativeRouting } from './data/native';
 import { useTasks } from './data/useTasks';
 import { useSystems } from './data/useSystems';
 import { useMeals } from './data/useMeals';
@@ -100,6 +101,16 @@ function Dashboard() {
   // excluded: it's signed in permanently and would otherwise report a visit
   // every minute of every day.
   const awayDays = useLastSeen({ userId: session?.user?.id, active: view !== 'hub' });
+
+  // On the iOS app, tapping a widget or a notification carries a `tend://route`
+  // URL that has to land on the right page. No-ops in a browser.
+  useEffect(() => {
+    let stop;
+    startNativeRouting(navigate).then((fn) => {
+      stop = fn;
+    });
+    return () => stop?.();
+  }, [navigate]);
 
   // Which sections this household kept. Everything below reads from it: what's
   // in the nav, what routes resolve, and which hooks bother to fetch.

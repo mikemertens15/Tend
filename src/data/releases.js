@@ -8,6 +8,41 @@
 
 export const RELEASES = [
   {
+    version: '1.2.0',
+    date: '2026-08-22',
+    name: 'In your pocket',
+    notes: [
+      [
+        'added',
+        'Bills, on the calendar. A bill is just an event that costs something — pick Bill as the kind, put in what it comes to, and it repeats like anything else. What\'s due sits in a strip above the grid, and stays there whichever week you\'re looking at, because "what leaves the account soon" isn\'t a question about the days on screen.',
+      ],
+      [
+        'added',
+        'Ticking one off records the month, not the bill. Rent is one entry and there are twelve answers a year, so paying August doesn\'t touch September. If the amount came out different, that\'s what gets saved.',
+      ],
+      [
+        'added',
+        'Bills that come out by themselves say so, and then stop asking. Mark one as autopay and once the date has passed Tend counts it paid — otherwise the electricity would grow a new complaint every month forever.',
+      ],
+      [
+        'added',
+        'A bill whose amount varies can be left blank. It still shows up and still counts; the totals just say how many aren\'t priced yet rather than quietly pretending they\'re zero.',
+      ],
+      [
+        'added',
+        'Tend is an iPhone app. The same Tend — everything works the way it does in the browser — with two things a browser can\'t do.',
+      ],
+      [
+        'added',
+        'Home-screen widgets: Bills and Agenda, in all three sizes plus the lock screen. Make a link under Calendar → Widget, tap "Use on this phone", then add the widget. The Bills one leads with what\'s late and what it comes to.',
+      ],
+      [
+        'added',
+        'Notifications, if you want them — a nudge when a bill is due or has slipped. Off until you turn them on in settings, and iOS only asks once.',
+      ],
+    ],
+  },
+  {
     version: '1.1.1',
     date: '2026-08-19',
     name: 'Second thoughts',

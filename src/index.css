@@ -379,6 +379,17 @@ input, textarea, select {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* The native iOS shell only.
+   In a Safari home-screen install the status bar sits *above* the web view, so
+   the page already starts below the clock. Capacitor's WKWebView is genuinely
+   full-bleed, so without this the header runs underneath the time and the
+   battery. Scoped to a class the native bridge sets rather than applied to
+   everything, because on the PWA it would inset a second time. */
+html.tend-native body {
+  padding-top: env(safe-area-inset-top, 0px);
+  background: var(--c-bg);
+}
+
 /* Kitchen display: no text selection, no tap highlight, no accidental
    pull-to-refresh on a wall-mounted tablet nobody is meant to be scrolling. */
 .tend-hub {

@@ -79,18 +79,20 @@ export function useWidgetTokens() {
 // what the iOS widget will call — the web page at #/widget/<token> exists so the
 // endpoint can be seen working before a line of Swift is written, and so there's
 // something to compare the native rendering against.
-export function useWidgetAgenda(token, days = 3) {
+export function useWidgetAgenda(token, days = 3, billDays = 30) {
   const [data, setData] = useState(undefined); // undefined = loading, null = bad token
 
   useEffect(() => {
     let live = true;
-    supabase.rpc('widget_agenda', { p_token: token, p_days: days }).then(({ data: payload, error }) => {
-      if (live) setData(error ? null : (payload ?? null));
-    });
+    supabase
+      .rpc('widget_agenda', { p_token: token, p_days: days, p_bill_days: billDays })
+      .then(({ data: payload, error }) => {
+        if (live) setData(error ? null : (payload ?? null));
+      });
     return () => {
       live = false;
     };
-  }, [token, days]);
+  }, [token, days, billDays]);
 
   return { payload: data, loading: data === undefined };
 }

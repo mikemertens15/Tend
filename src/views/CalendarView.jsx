@@ -16,12 +16,13 @@ import {
 import { useIsNarrow } from '../useMediaQuery';
 import { useWallClock } from '../useWallClock';
 import { useHousehold } from '../household/HouseholdProvider';
-import { useEvents } from '../data/useEvents';
+import { useEvents, BILL_KIND } from '../data/useEvents';
 import { useJobs } from '../data/useJobs';
 import { useWeather } from '../data/useWeather';
 import { formatTemp } from '../data/weather';
 import { layoutTimed, busyWindow, nowMinutes, DAY_MINUTES } from '../data/layout';
 import { tint } from '../data/calendars';
+import { amountLabel, moneyTotal, dueLabel, summarise } from '../data/bills';
 import { matchesOwner, OWNER_ALL } from '../data/owner';
 import { EventModal } from '../components/EventModal';
 import { CalendarsModal } from '../components/CalendarsModal';
@@ -61,6 +62,7 @@ export function CalendarView({ tasks, navigate }) {
   const narrow = useIsNarrow();
   const { peopleMap, members, currentMember } = useHousehold();
   const ev = useEvents();
+  const { billsDue } = ev;
   const { activeJobs } = useJobs();
   const weather = useWeather();
   const now = useWallClock();
@@ -176,6 +178,11 @@ export function CalendarView({ tasks, navigate }) {
   const overdue = visibleTasks
     .filter((t) => !t.done && t.dueOn < view.from)
     .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  // Bills reach outside the visible window on purpose. A bill that slipped last
+  // month is the single most useful thing this page can tell you, and it would
+  // be invisible in every mode if it were drawn only where it falls.
+  const billsSoon = useMemo(() => billsDue(30), [billsDue]);
 
   const openNew = (date, minutes = null) =>
     setEditing({ date, time: minutes == null ? null : timeStr(minutes), occurrence: null });
@@ -324,6 +331,8 @@ export function CalendarView({ tasks, navigate }) {
         </Card>
       )}
 
+      {offset === 0 && <BillsStrip bills={billsSoon} onOpen={(o) => setEditing({ date: o.date, time: null, occurrence: o })} onTogglePaid={ev.togglePaid} />}
+
       {(mode === 'day' || (mode === 'week' && !narrow)) && (
         <TimeGrid
           days={view.days}
@@ -403,9 +412,98 @@ export function CalendarView({ tasks, navigate }) {
           onSkipOccurrence={ev.skipOccurrence}
           onEndSeriesBefore={ev.endSeriesBefore}
           onDeleteSeries={ev.removeEvent}
+          onTogglePaid={ev.togglePaid}
         />
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Bills
+// ---------------------------------------------------------------------------
+
+// What's owed, above the grid.
+//
+// This deliberately ignores the visible window. Every other thing on this page
+// answers "what's happening in the days I'm looking at"; a bill answers "what
+// leaves the account soon", and paging to next March shouldn't change it. The
+// same reasoning puts overdue chores in their own card above.
+function BillsStrip({ bills, onOpen, onTogglePaid }) {
+  if (bills.length === 0) return null;
+
+  const { unpaidCents, overdueCount, unknownCount } = summarise(bills);
+  const shown = bills.slice(0, 6);
+
+  return (
+    <Card style={{ padding: '13px 20px', marginBottom: 14, borderColor: overdueCount > 0 ? tone.red : colors.cardBorder }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, marginBottom: 9, flexWrap: 'wrap' }}>
+        <div style={{ font: `600 11px ${fonts.sans}`, color: overdueCount > 0 ? tone.red : colors.muted2, letterSpacing: '.06em', textTransform: 'uppercase' }}>
+          {overdueCount > 0 ? `Bills · ${overdueCount} late` : 'Bills coming up'}
+        </div>
+        <div style={{ font: `400 13px ${fonts.sans}`, color: colors.muted }}>
+          {moneyTotal(unpaidCents)}
+          {/* A total that quietly omits the bills nobody has priced would read
+              as complete when it isn't. */}
+          {unknownCount > 0 && <span style={{ color: colors.faint }}> + {unknownCount} not yet priced</span>}
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {shown.map((b) => (
+          <span
+            key={b.id}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '5px 6px 5px 12px',
+              borderRadius: 18,
+              background: b.overdue ? tint('#b4506a', 0.12) : colors.inputBg,
+              border: `1px solid ${b.overdue ? tone.red : 'transparent'}`,
+            }}
+          >
+            <button onClick={() => onOpen(b)} style={{ font: `500 12px ${fonts.sans}`, color: colors.ink, textAlign: 'left' }}>
+              {b.title}
+              <span style={{ font: `600 11px ${fonts.sans}`, color: b.overdue ? tone.red : colors.muted, marginLeft: 7 }}>
+                {amountLabel(b.amountCents)}
+              </span>
+              <span style={{ font: `400 11px ${fonts.sans}`, color: colors.faint, marginLeft: 6 }}>{dueLabel(b.date)}</span>
+            </button>
+            {/* Autopay has nothing to tick — the bank does it. Showing a
+                checkbox there would be asking for a decision that isn't one. */}
+            {b.autopay ? (
+              <span title="Comes out automatically" style={{ fontSize: 11, padding: '0 6px', color: colors.faint }}>
+                🔁
+              </span>
+            ) : (
+              <button
+                onClick={() => onTogglePaid(b)}
+                title="Mark paid"
+                aria-label={`Mark ${b.title} paid`}
+                style={{
+                  width: 22,
+                  height: 22,
+                  borderRadius: 11,
+                  background: colors.card,
+                  border: `1px solid ${colors.cardBorder}`,
+                  font: `600 11px ${fonts.sans}`,
+                  color: colors.muted2,
+                  flexShrink: 0,
+                }}
+              >
+                ✓
+              </button>
+            )}
+          </span>
+        ))}
+        {bills.length > shown.length && (
+          <span style={{ alignSelf: 'center', font: `400 11.5px ${fonts.sans}`, color: colors.faint }}>
+            +{bills.length - shown.length} more
+          </span>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -698,8 +796,26 @@ function AllDayChip({ occurrence: o, mine, onClick }) {
         {o.visibility !== 'household' && mine && '🔒 '}
         {o.icon} {o.title}
         {o.age != null && o.age > 0 && ` (${o.age})`}
+        {o.kind === BILL_KIND && <BillAmount occurrence={o} />}
       </span>
     </button>
+  );
+}
+
+// The amount trailing a chip, struck through once it's settled. Shared by the
+// week band and the month grid so a bill reads the same in both.
+function BillAmount({ occurrence: o }) {
+  return (
+    <span
+      style={{
+        font: `600 10px ${fonts.sans}`,
+        color: o.paid ? colors.faint : o.overdue ? tone.red : colors.muted,
+        textDecoration: o.paid ? 'line-through' : 'none',
+        marginLeft: 5,
+      }}
+    >
+      {amountLabel(o.amountCents)}
+    </span>
   );
 }
 
@@ -844,6 +960,7 @@ function MonthChip({ occurrence: o, mine, onClick }) {
         {!o.allDay && o.time && <span style={{ color: colors.muted }}>{o.time.replace(' ', '')} </span>}
         {o.title}
         {o.age != null && o.age > 0 && ` (${o.age})`}
+        {o.kind === BILL_KIND && <BillAmount occurrence={o} />}
       </span>
     </button>
   );
@@ -928,7 +1045,27 @@ function AgendaRow({ occurrence: o, mine, onClick }) {
           </span>
         )}
       </span>
-      {o.who && <Avatar who={o.who} size={24} />}
+      {/* A bill shows what it costs where everything else shows whose it is —
+          the amount is the thing you came to this row to read. */}
+      {o.kind === BILL_KIND ? (
+        <span style={{ textAlign: 'right', flexShrink: 0 }}>
+          <span
+            style={{
+              display: 'block',
+              font: `600 12.5px ${fonts.sans}`,
+              color: o.paid ? colors.faint : colors.ink,
+              textDecoration: o.paid ? 'line-through' : 'none',
+            }}
+          >
+            {amountLabel(o.amountCents)}
+          </span>
+          <span style={{ display: 'block', font: `500 10.5px ${fonts.sans}`, color: o.paid ? tone.green : colors.faint, marginTop: 1 }}>
+            {o.paid ? 'paid' : o.autopay ? 'auto' : ''}
+          </span>
+        </span>
+      ) : (
+        o.who && <Avatar who={o.who} size={24} />
+      )}
     </button>
   );
 }

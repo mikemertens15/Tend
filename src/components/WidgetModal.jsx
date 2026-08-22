@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { colors, tone, fonts } from '../theme';
 import { ModalShell, Label, inputStyle, PrimaryButton, GhostButton } from './Modal';
 import { useWidgetTokens, widgetUrl } from '../data/useWidget';
+import { useHousehold } from '../household/HouseholdProvider';
+import { isNative, configureWidget, clearWidget, widgetStatus } from '../data/native';
 import { parseDay, monthDay, dayStr } from '../dates';
 
 // Making the link a phone widget reads.
@@ -14,9 +16,29 @@ import { parseDay, monthDay, dayStr } from '../dates';
 
 export function WidgetModal({ onClose }) {
   const { tokens, createToken, revokeToken, deleteToken } = useWidgetTokens();
+  const { currentMember } = useHousehold();
   const [label, setLabel] = useState('');
   const [copiedId, setCopiedId] = useState(null);
   const [busy, setBusy] = useState(false);
+  // Which token this phone's home-screen widget is currently reading. Only ever
+  // set on the native app; on the web the whole control is hidden.
+  const [installed, setInstalled] = useState(null);
+
+  useEffect(() => {
+    if (isNative) widgetStatus().then(setInstalled);
+  }, []);
+
+  async function installOnThisPhone(t) {
+    await configureWidget({ token: t.token, memberName: currentMember?.name });
+    setInstalled(await widgetStatus());
+  }
+
+  async function stopUsingHere() {
+    await clearWidget();
+    setInstalled(await widgetStatus());
+  }
+
+  const isInstalled = (t) => installed?.configured && installed.tokenTail === t.token.slice(-6);
 
   async function create() {
     if (busy) return;
@@ -47,8 +69,17 @@ export function WidgetModal({ onClose }) {
       }
     >
       <div style={{ font: `400 13px/1.65 ${fonts.sans}`, color: colors.muted, marginBottom: 18 }}>
-        A link that returns your next few days as plain data, with no sign-in. The home-screen widget reads it; you can
-        also open it in a browser to see exactly what it returns.
+        {isNative ? (
+          <>
+            Make a link, tap <strong style={{ color: colors.ink }}>Use on this phone</strong>, then long-press your home
+            screen and add the <strong style={{ color: colors.ink }}>Tend</strong> widget — Bills or Agenda.
+          </>
+        ) : (
+          <>
+            A link that returns your next few days as plain data, with no sign-in. The home-screen widget reads it; you
+            can also open it in a browser to see exactly what it returns.
+          </>
+        )}
       </div>
 
       <div
@@ -99,10 +130,27 @@ export function WidgetModal({ onClose }) {
                     {t.label || 'Unnamed device'}
                     {t.revoked && <span style={{ color: tone.red, fontWeight: 500 }}> · revoked</span>}
                   </span>
+                  {/* On the phone itself, connecting the home-screen widget is
+                      the thing you came here to do — copying a URL is the
+                      fallback for setting one up from a laptop. */}
+                  {!dead && isNative && (
+                    <button
+                      onClick={() => (isInstalled(t) ? stopUsingHere() : installOnThisPhone(t))}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: 18,
+                        background: isInstalled(t) ? colors.chipBg : colors.accent,
+                        color: isInstalled(t) ? colors.muted3 : colors.onAccent,
+                        font: `600 11.5px ${fonts.sans}`,
+                      }}
+                    >
+                      {isInstalled(t) ? '✓ On this phone' : 'Use on this phone'}
+                    </button>
+                  )}
                   {!dead && (
                     <button
                       onClick={() => copy(t)}
-                      style={{ padding: '6px 12px', borderRadius: 18, background: colors.accent, color: colors.onAccent, font: `600 11.5px ${fonts.sans}` }}
+                      style={{ padding: '6px 12px', borderRadius: 18, background: isNative ? colors.chipBg : colors.accent, color: isNative ? colors.muted3 : colors.onAccent, font: `600 11.5px ${fonts.sans}` }}
                     >
                       {copiedId === t.id ? 'Copied' : 'Copy link'}
                     </button>

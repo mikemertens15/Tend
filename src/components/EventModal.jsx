@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { colors, tone, fonts } from '../theme';
 import { ModalShell, Label, Chip, inputStyle, PrimaryButton, GhostButton, DeleteButton, MemberPicker } from './Modal';
 import { Avatar } from './ui';
-import { EVENT_KINDS, WORK_KIND, VISIBILITIES } from '../data/useEvents';
+import { EVENT_KINDS, WORK_KIND, BILL_KIND, VISIBILITIES } from '../data/useEvents';
+import { parseAmount, amountInput } from '../data/bills';
 import { FREQS, DOWS, DOW_INITIALS, weekdayIndex, repeatSummary } from '../data/recurrence';
 import { suggestCalendar, tint } from '../data/calendars';
 import { useHousehold } from '../household/HouseholdProvider';
@@ -51,6 +52,7 @@ export function EventModal({
   onSkipOccurrence,
   onEndSeriesBefore,
   onDeleteSeries,
+  onTogglePaid,
 }) {
   const { members, currentMember } = useHousehold();
   const event = occurrence?.raw ?? null;
@@ -76,6 +78,8 @@ export function EventModal({
   const [visibility, setVisibility] = useState(event?.visibility ?? 'household');
   const [visibleTo, setVisibleTo] = useState(event?.visible_to ?? []);
   const [jobId, setJobId] = useState(event?.job_id ?? null);
+  const [amount, setAmount] = useState(amountInput(event?.amount_cents));
+  const [autopay, setAutopay] = useState(Boolean(event?.autopay));
 
   const [freq, setFreq] = useState(event?.repeat_freq ?? null);
   const [interval, setInterval] = useState(event?.repeat_interval ?? 1);
@@ -90,6 +94,7 @@ export function EventModal({
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const isWork = kind === WORK_KIND;
+  const isBill = kind === BILL_KIND;
   const allDay = !startTime;
   const hours = shiftHours(startTime, endTime);
   const onlyThisOne = editing && repeats && scope === 'one';
@@ -107,6 +112,13 @@ export function EventModal({
     // A yearly shift is a mistake every time, and it would pay you for the same
     // hours in every year the calendar was asked about.
     if (next === WORK_KIND && freq === 'yearly') setFreq(null);
+    // Almost every bill is monthly and none of them happen at 9am. Guessing
+    // both is the difference between adding rent in two taps and in nine.
+    if (next === BILL_KIND) {
+      if (!editing && !freq) setFreq('monthly');
+      setStartTime('');
+      setEndTime('');
+    }
     if (!calendarPinned) {
       const suggested = suggestCalendar(next, calendars);
       if (suggested) {
@@ -182,6 +194,10 @@ export function EventModal({
       visibility,
       visible_to: visibility === 'members' ? visibleTo.filter((v) => v !== memberId) : [],
       job_id: isWork ? jobId : null,
+      // Blank stays null rather than becoming zero: a utility whose amount
+      // varies is unknown, and $0 would quietly under-count every total.
+      amount_cents: isBill ? parseAmount(amount) : null,
+      autopay: isBill ? autopay : false,
       repeat_freq: freq,
       repeat_interval: Math.max(1, Number(interval) || 1),
       repeat_weekdays: freq === 'weekly' && weekdays.length > 0 ? weekdays : null,
@@ -226,7 +242,7 @@ export function EventModal({
 
   return (
     <ModalShell
-      title={editing ? 'Edit event' : 'Add an event'}
+      title={isBill ? (editing ? 'Edit bill' : 'Add a bill') : editing ? 'Edit event' : 'Add an event'}
       onClose={onClose}
       width={520}
       footer={
@@ -314,6 +330,42 @@ export function EventModal({
         </>
       )}
 
+      {/* Ticking off *this month's* copy, which is a different act from editing
+          the bill — so it sits above the form rather than inside it, and it
+          saves on click rather than waiting for Save. */}
+      {isBill && editing && occurrence && onTogglePaid && (
+        <button
+          onClick={() => {
+            onTogglePaid(occurrence);
+            onClose();
+          }}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 11,
+            width: '100%',
+            padding: '13px 15px',
+            borderRadius: 12,
+            marginBottom: 20,
+            textAlign: 'left',
+            background: occurrence.paid ? tint('#5c7f3f', 0.16) : colors.inputBg,
+            border: `1px solid ${occurrence.paid ? tone.green : colors.cardBorder}`,
+          }}
+        >
+          <span style={{ fontSize: 15, lineHeight: 1.2 }}>{occurrence.paid ? '✅' : '⬜️'}</span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', font: `600 13px ${fonts.sans}`, color: colors.ink }}>
+              {occurrence.paid ? 'Paid' : 'Mark this one paid'}
+            </span>
+            <span style={{ display: 'block', font: `400 11.5px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
+              {occurrence.paid
+                ? `Settled${occurrence.payment?.paid_on ? ` on ${occurrence.payment.paid_on}` : ''}. Tap to undo.`
+                : `Just the ${occurrence.dateLabel} one — the rest of the series is untouched.`}
+            </span>
+          </span>
+        </button>
+      )}
+
       <Label>What is it?</Label>
       <input
         autoFocus
@@ -387,6 +439,37 @@ export function EventModal({
               : 'Give it an end time and Tend counts the hours.'
         }
       />
+
+      {isBill && !onlyThisOne && (
+        <>
+          <Label>How much?</Label>
+          <input
+            value={amount}
+            inputMode="decimal"
+            onChange={(e) => setAmount(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+            placeholder="Leave blank if it varies"
+            style={inputStyle}
+          />
+          <div style={{ font: `400 11.5px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: -12, marginBottom: 20 }}>
+            {parseAmount(amount) == null
+              ? 'A bill with no amount still shows up and still counts — you just fill in the number when you pay it.'
+              : 'What it usually comes to. You can correct it on the month it’s different.'}
+          </div>
+
+          <PanelToggle
+            on={autopay}
+            onClick={() => setAutopay(!autopay)}
+            icon={autopay ? '🔁' : '👆'}
+            title="Comes out automatically"
+            blurb={
+              autopay
+                ? 'Tend will stop asking once the date passes — it counts as paid, because it is.'
+                : 'You’ll tick this one off yourself each time it comes round.'
+            }
+          />
+        </>
+      )}
 
       {isWork && (
         <>

@@ -2,6 +2,7 @@ import { colors, tone, fonts } from '../theme';
 import { useWidgetAgenda } from '../data/useWidget';
 import { parseDay, monthDay, shortDay, timeLabel, timeRangeLabel, hoursLabel } from '../dates';
 import { tint } from '../data/calendars';
+import { amountLabel, moneyTotal } from '../data/bills';
 
 // The widget, rendered on the web.
 //
@@ -29,6 +30,10 @@ export function WidgetView({ token }) {
 
   const days = payload.days ?? [];
   const work = payload.work;
+  // Settled bills come back in the payload so a just-paid one doesn't vanish
+  // mid-glance, but the widget itself only has room for what's still owed.
+  const bills = (payload.bills ?? []).filter((b) => !b.paid);
+  const due = payload.billsDue ?? { unpaidCents: 0, overdueCount: 0 };
 
   return (
     <Frame>
@@ -100,6 +105,37 @@ export function WidgetView({ token }) {
           </div>
         );
       })}
+
+      {bills.length > 0 && (
+        <div style={{ borderTop: `1px solid ${colors.divider}`, paddingTop: 12, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 10, marginBottom: 8 }}>
+            <span style={{ font: `600 10.5px ${fonts.sans}`, color: due.overdueCount > 0 ? tone.red : colors.muted2, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+              {due.overdueCount > 0 ? `Bills · ${due.overdueCount} late` : 'Bills'}
+            </span>
+            <span style={{ font: `500 11.5px ${fonts.sans}`, color: colors.muted }}>
+              {moneyTotal(due.unpaidCents)} due
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {bills.slice(0, 5).map((b) => (
+              <div key={`${b.eventId}:${b.occurrenceDate}`} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ width: 46, flexShrink: 0, font: `600 10.5px ${fonts.sans}`, color: b.overdue ? tone.red : colors.muted }}>
+                  {b.overdue ? 'late' : b.dueInDays === 0 ? 'today' : `${b.dueInDays}d`}
+                </span>
+                <span style={{ width: 3, alignSelf: 'stretch', minHeight: 15, borderRadius: 2, background: b.color ?? colors.accent, flexShrink: 0 }} />
+                <span style={{ minWidth: 0, flex: 1, font: `600 12.5px ${fonts.sans}`, color: colors.ink, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {b.title}
+                  {b.autopay && <span style={{ font: `400 10.5px ${fonts.sans}`, color: colors.faint }}> 🔁</span>}
+                </span>
+                <span style={{ font: `600 12px ${fonts.sans}`, color: b.paid ? colors.faint : colors.ink, textDecoration: b.paid ? 'line-through' : 'none' }}>
+                  {amountLabel(b.amountCents)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {payload.openChores > 0 && (
         <div style={{ font: `500 11.5px ${fonts.sans}`, color: tone.amberText, borderTop: `1px solid ${colors.divider}`, paddingTop: 10 }}>

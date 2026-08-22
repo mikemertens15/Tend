@@ -8,6 +8,7 @@ import { PALETTES, MODES } from '../data/palettes';
 import { useSections } from '../data/useSections';
 import { OPTIONAL_SECTIONS, SECTION_BLURBS } from '../nav';
 import { geocode } from '../data/weather';
+import { usePush } from '../data/usePush';
 
 // Account + household management, opened from the TopNav avatar: share the
 // invite code, see/add members, and sign out.
@@ -290,6 +291,8 @@ export function HouseholdModal({ onClose }) {
           </span>
         </button>
 
+        <PushSetting />
+
         {/* Invite code */}
         <Label>Invite the family</Label>
         <div
@@ -437,6 +440,76 @@ function Label({ children }) {
 // Set once, then forgotten. The place is geocoded here and stored as lat/long,
 // so the forecast call never has to resolve a name — and picking from a list
 // beats a text box, because there are thirty Springfields.
+// Notifications on this phone.
+//
+// Only rendered in the iOS app: a browser has nothing to offer here, and a
+// switch that explains why it doesn't work is worse than no switch. iOS grants
+// exactly one permission prompt per install, which is why this waits to be
+// tapped rather than asking on launch.
+function PushSetting() {
+  const { supported, permission, devices, busy, error, turnOn, turnOff } = usePush();
+  if (!supported) return null;
+
+  const on = permission === 'granted' && devices.length > 0;
+
+  return (
+    <>
+      <Label>Notifications</Label>
+
+      {permission === 'denied' ? (
+        <div
+          style={{
+            padding: '12px 14px',
+            borderRadius: 12,
+            marginBottom: 24,
+            background: colors.inputBg,
+            border: `1px solid ${colors.cardBorder}`,
+          }}
+        >
+          <div style={{ font: `600 13px ${fonts.sans}`, color: colors.ink, marginBottom: 3 }}>Turned off in Settings</div>
+          <div style={{ font: `400 11.5px/1.5 ${fonts.sans}`, color: colors.muted }}>
+            iOS only asks once. To switch them back on: Settings → Tend → Notifications.
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => (on ? turnOff(devices[0].id) : turnOn())}
+          aria-pressed={on}
+          disabled={busy}
+          style={{
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 11,
+            width: '100%',
+            padding: '12px 14px',
+            borderRadius: 12,
+            marginBottom: 24,
+            textAlign: 'left',
+            background: on ? colors.chipBg : colors.inputBg,
+            border: `1px solid ${on ? colors.selected : colors.cardBorder}`,
+            opacity: busy ? 0.6 : 1,
+          }}
+        >
+          <span style={{ fontSize: 15, lineHeight: 1.2 }}>{on ? '🔔' : '🔕'}</span>
+          <span style={{ flex: 1 }}>
+            <span style={{ display: 'block', font: `600 13px ${fonts.sans}`, color: colors.ink }}>
+              {on ? 'Notify this phone' : 'Turn on notifications'}
+            </span>
+            <span style={{ display: 'block', font: `400 11.5px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
+              {on
+                ? `${devices.length} device${devices.length === 1 ? '' : 's'} registered. A bill due tomorrow, a chore run late — only when there's something to say.`
+                : 'A nudge when a bill is due or something has slipped. iOS will ask you once.'}
+            </span>
+            {error && (
+              <span style={{ display: 'block', font: `500 11px ${fonts.sans}`, color: tone.red, marginTop: 4 }}>{error}</span>
+            )}
+          </span>
+        </button>
+      )}
+    </>
+  );
+}
+
 function WeatherSetting({ settings, saveSettings }) {
   const place = settings.weather ?? null;
   const unit = settings.weatherUnit ?? 'f';

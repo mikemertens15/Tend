@@ -14,6 +14,7 @@ import {
   shiftHours,
 } from '../dates';
 import { occurrenceDates, repeatSummary, indexExceptions, applyException, exceptionKey } from './recurrence';
+import { isSettled, isOverdue } from './bills';
 
 // Everything that happens on a date: birthdays, appointments, the school play,
 // a weekend away, and the shifts you get paid for.
@@ -45,9 +46,16 @@ export const EVENT_KINDS = [
   // A shift is a calendar event, because that's where you were already putting
   // it. Everything the Earned view knows, it knows from here.
   ['work', 'Work', '💼'],
+  // So is a bill. Rent is a monthly thing with a date, which is what this table
+  // already models — and putting it here is what lets "when is it due" and
+  // "what else is on that week" be the same question. What it costs and whether
+  // it's been paid live in events.amount_cents and the bill_payments table;
+  // see data/bills.js.
+  ['bill', 'Bill', '💵'],
 ];
 
 export const WORK_KIND = 'work';
+export const BILL_KIND = 'bill';
 
 export const kindMeta = (key) => EVENT_KINDS.find(([k]) => k === key) ?? EVENT_KINDS[0];
 
@@ -73,12 +81,13 @@ const ruleOf = (r) => ({
 
 // `enabled: false` parks the hook — see the note in useSystems.
 export function useEvents({ enabled = true } = {}) {
-  const { household, members } = useHousehold();
+  const { household, members, currentMember } = useHousehold();
   const householdId = enabled ? (household?.id ?? null) : null;
   const { calendars, byId: calendarById } = useCalendars({ enabled });
 
   const [rows, setRows] = useState([]);
   const [exceptionRows, setExceptionRows] = useState([]);
+  const [paymentRows, setPaymentRows] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const nameById = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m.name])), [members]);
@@ -87,18 +96,22 @@ export function useEvents({ enabled = true } = {}) {
     if (!householdId) {
       setRows([]);
       setExceptionRows([]);
+      setPaymentRows([]);
       setLoading(false);
       return;
     }
-    // Both in flight together: the grid can't draw a series correctly without
-    // knowing which of its occurrences were cancelled, so showing one before
-    // the other would flash a lecture that isn't happening.
-    const [events, exceptions] = await Promise.all([
+    // All three in flight together: the grid can't draw a series correctly
+    // without knowing which of its occurrences were cancelled, so showing one
+    // before the other would flash a lecture that isn't happening — and a bill
+    // would flash as unpaid a moment after you paid it.
+    const [events, exceptions, payments] = await Promise.all([
       supabase.from('events').select('*').eq('household_id', householdId).order('on_date', { ascending: true }),
       supabase.from('event_exceptions').select('*').eq('household_id', householdId),
+      supabase.from('bill_payments').select('*').eq('household_id', householdId),
     ]);
     setRows(events.data ?? []);
     setExceptionRows(exceptions.data ?? []);
+    setPaymentRows(payments.data ?? []);
     setLoading(false);
   }, [householdId]);
 
@@ -120,6 +133,11 @@ export function useEvents({ enabled = true } = {}) {
         { event: '*', schema: 'public', table: 'event_exceptions', filter: `household_id=eq.${householdId}` },
         () => fetchEvents(),
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'bill_payments', filter: `household_id=eq.${householdId}` },
+        () => fetchEvents(),
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
@@ -127,6 +145,13 @@ export function useEvents({ enabled = true } = {}) {
   }, [householdId, fetchEvents]);
 
   const exceptions = useMemo(() => indexExceptions(exceptionRows), [exceptionRows]);
+
+  // Payments keyed the same way exceptions are, and for the same reason: a
+  // series row is one row and there are twelve answers a year.
+  const payments = useMemo(
+    () => new Map(paymentRows.map((p) => [exceptionKey(p.event_id, p.occurrence_date), p])),
+    [paymentRows],
+  );
 
   // One occurrence, before exceptions are applied to it.
   const buildOccurrence = useCallback(
@@ -152,6 +177,9 @@ export function useEvents({ enabled = true } = {}) {
         visibility: r.visibility,
         visibleTo: r.visible_to ?? [],
         jobId: r.job_id,
+        // Bills. Null on everything else, so no other consumer changes shape.
+        amountCents: r.kind === BILL_KIND ? r.amount_cents : null,
+        autopay: r.kind === BILL_KIND ? Boolean(r.autopay) : false,
         calendar: cal,
         color: cal?.color ?? null,
         repeats: Boolean(r.repeat_freq),
@@ -167,9 +195,22 @@ export function useEvents({ enabled = true } = {}) {
   // The derived fields every consumer wants and nobody should compute twice.
   const decorate = (o) => {
     const allDay = o.startMinutes == null;
+    // Whether *this month's* copy of the bill is settled. Keyed on the
+    // occurrence date rather than the day it lands on, so moving a due date
+    // with an exception doesn't lose the payment attached to it.
+    const payment = o.kind === BILL_KIND ? (payments.get(exceptionKey(o.eventId, o.occurrenceDate)) ?? null) : null;
     return {
       ...o,
       id: `${o.eventId}:${o.occurrenceDate}`,
+      payment,
+      paid: Boolean(payment),
+      // What actually left the account, falling back to what was expected.
+      paidCents: payment?.amount_cents ?? o.amountCents ?? null,
+      // Computed here rather than in the bills() reader so a bill drawn on the
+      // grid knows it's late too — the chips come through between(), which
+      // doesn't go anywhere near bills().
+      settled: o.kind === BILL_KIND && isSettled({ paid: Boolean(payment), autopay: o.autopay, date: o.date }),
+      overdue: o.kind === BILL_KIND && isOverdue({ paid: Boolean(payment), autopay: o.autopay, date: o.date }),
       allDay,
       time: timeLabel(o.startTime),
       timeRange: timeRangeLabel(o.startTime, o.endTime),
@@ -234,11 +275,82 @@ export function useEvents({ enabled = true } = {}) {
           a.title.localeCompare(b.title),
       );
     },
-    [rows, exceptions, buildOccurrence],
+    // `payments` is in here because decorate() reads it. Without it, ticking a
+    // bill paid would update the map and never redraw the grid.
+    [rows, exceptions, payments, buildOccurrence],
   );
 
   // The next N days, for the dashboard and the kitchen display.
   const upcoming = useCallback((days = 14) => between(dayStr(), addDays(dayStr(), days)), [between]);
+
+  // Just the bills in a window, in the order a list wants them, with the
+  // settled/overdue judgement already applied. `includeSettled: false` is what
+  // the summary strip and the widget want — a paid bill is history.
+  const bills = useCallback(
+    (fromDay, toDay, { includeSettled = true } = {}) =>
+      between(fromDay, toDay)
+        .filter((o) => o.kind === BILL_KIND && !o.continuation)
+        .filter((o) => includeSettled || !o.settled),
+    [between],
+  );
+
+  // Everything unpaid, reaching backwards for the ones that slipped. This is
+  // the list the dashboard strip and the widget both read, so "what do I owe"
+  // has exactly one answer in the app.
+  const billsDue = useCallback(
+    (days = 30, lookBack = 60) =>
+      bills(addDays(dayStr(), -lookBack), addDays(dayStr(), days), { includeSettled: false }),
+    [bills],
+  );
+
+  // ------------------------------------------------------------------------
+  // Paying one
+  // ------------------------------------------------------------------------
+
+  // Marking a bill paid writes a row rather than flipping a flag, because
+  // "paid" is a fact about one month with a date and an amount of its own —
+  // the flag would have nowhere to put either.
+  const markPaid = useCallback(
+    async (occurrence, { amountCents, paidOn, note } = {}) => {
+      if (!householdId) return;
+      const row = {
+        household_id: householdId,
+        event_id: occurrence.eventId,
+        occurrence_date: occurrence.occurrenceDate,
+        paid_on: paidOn ?? dayStr(),
+        amount_cents: amountCents ?? occurrence.amountCents ?? null,
+        member_id: currentMember?.id ?? null,
+        note: note?.trim() || null,
+      };
+      // Optimistic: ticking a bill off should feel instant, and the realtime
+      // subscription reconciles a moment later either way.
+      setPaymentRows((ps) => [...ps.filter((p) => !(p.event_id === row.event_id && p.occurrence_date === row.occurrence_date)), row]);
+      const { error } = await supabase.from('bill_payments').upsert(row, { onConflict: 'event_id,occurrence_date' });
+      if (error) fetchEvents();
+    },
+    [householdId, currentMember, fetchEvents],
+  );
+
+  // "Actually, that didn't go through."
+  const unmarkPaid = useCallback(
+    async (occurrence) => {
+      setPaymentRows((ps) =>
+        ps.filter((p) => !(p.event_id === occurrence.eventId && p.occurrence_date === occurrence.occurrenceDate)),
+      );
+      const { error } = await supabase
+        .from('bill_payments')
+        .delete()
+        .eq('event_id', occurrence.eventId)
+        .eq('occurrence_date', occurrence.occurrenceDate);
+      if (error) fetchEvents();
+    },
+    [fetchEvents],
+  );
+
+  const togglePaid = useCallback(
+    (occurrence) => (occurrence.paid ? unmarkPaid(occurrence) : markPaid(occurrence)),
+    [markPaid, unmarkPaid],
+  );
 
   // ------------------------------------------------------------------------
   // The series
@@ -386,11 +498,17 @@ export function useEvents({ enabled = true } = {}) {
   return {
     events: rows,
     exceptions: exceptionRows,
+    payments: paymentRows,
     calendars,
     calendarById,
     loading,
     between,
     upcoming,
+    bills,
+    billsDue,
+    markPaid,
+    unmarkPaid,
+    togglePaid,
     addEvent,
     updateEvent,
     removeEvent,
