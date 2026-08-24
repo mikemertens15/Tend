@@ -14,6 +14,26 @@ import { CatchUpCard } from '../components/CatchUpCard';
 import { useSections } from '../data/useSections';
 import { useWeather } from '../data/useWeather';
 
+// The dashboard: one screen that answers "what needs me today" without opening
+// anything else.
+//
+// This is the only view that reads across sections, which makes it the one
+// place two rules have to be obeyed carefully.
+//
+// **It summarises, it doesn't own.** Every number here is derived from data a
+// section already owns — `tasks` and `systems` are handed down from App.jsx,
+// hobbies and pets come from their own hooks. Nothing on this page is the
+// authoritative copy of anything, so there's no writing here beyond ticking a
+// chore, which goes straight back to `useTasks` through `onToggle`.
+//
+// **Switched-off sections must vanish completely.** Every hook Home calls takes
+// `{ enabled }` wired to `isOn(...)`, so turning a section off doesn't just hide
+// its card — the fetch and its realtime channel go too. See "Sections you can
+// switch off" in the README for why that matters and what it measures out at.
+//
+// The order of the page is deliberate and is the one thing worth preserving:
+// the catch-up card comes first, *before* anything that counts what you missed.
+// Landing on a tally of failures is how an app like this gets closed.
 export function HomeView({
   tasks,
   systems,

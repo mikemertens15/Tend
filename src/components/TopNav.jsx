@@ -5,6 +5,14 @@ import { useIsPhone } from '../useMediaQuery';
 import { useSections } from '../data/useSections';
 import { BUILD } from '../data/releases';
 
+// The desktop bar. Its counterpart is MobileNav, and the two are kept honest
+// by both reading `useSections().groups` rather than the raw nav list — a
+// household's switched-off sections have to disappear from both or the app
+// contradicts itself about what exists.
+//
+// This is also where the version chip lives, which is the only route into the
+// release log (`#/releases`); it has no nav entry of its own because nobody
+// goes looking for a changelog on purpose.
 export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
   const { currentMember } = useHousehold();
   const phone = useIsPhone();

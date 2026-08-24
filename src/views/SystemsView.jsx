@@ -6,6 +6,19 @@ import { statusColor } from './HomeView';
 import { useIsNarrow } from '../useMediaQuery';
 import { currentSeason, alreadyTracked } from '../data/seasons';
 
+// Home systems: the upkeep with a clock on it rather than a date. A furnace
+// filter isn't due on the 14th, it's due every 90 days from whenever it was
+// last changed — so `data/cadence.js` derives the status from
+// `last_done_on + interval_days`, and marking one done just stamps today.
+//
+// The seasonal suggestions are the only clever part, and they're deliberately
+// shallow: `data/seasons.js` holds a list per season and `alreadyTracked`
+// matches loosely, so "clean gutters" and "Clean the gutters" aren't offered as
+// two different jobs. It's a prompt, not a schedule — nothing is added until
+// somebody taps it.
+//
+// Systems are handed down from App.jsx rather than fetched here, because Home
+// summarises them too. See the note at the top of App.jsx.
 export function SystemsView({ systems, onAdd, onUpdate, onRemove, onMarkDone }) {
   const narrow = useIsNarrow();
   // null = closed, 'new' = adding, otherwise the system being edited.

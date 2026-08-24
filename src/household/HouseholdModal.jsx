@@ -10,8 +10,31 @@ import { OPTIONAL_SECTIONS, SECTION_BLURBS } from '../nav';
 import { geocode } from '../data/weather';
 import { usePush } from '../data/usePush';
 
-// Account + household management, opened from the TopNav avatar: share the
-// invite code, see/add members, and sign out.
+// Settings. All of them, in one sheet behind the TopNav avatar.
+//
+// This is the app's only settings surface and it stays that way on purpose: a
+// household dashboard that grows a settings *section* has started to be about
+// itself rather than about the house. The cost is that this file is long, and
+// the order of the panels is doing the work a nav would otherwise do — what the
+// house looks after, then how it looks, then who's in it, then your own login.
+//
+// Three different kinds of preference live here, and which one a setting is
+// decides where it's stored. Getting this wrong is the easy mistake:
+//
+//   household-wide  →  `households.settings` jsonb, via `saveSettings`
+//                      (sections, weather place, digest, bill reminders)
+//   personal        →  localStorage, via useTheme
+//                      (palette and light/dark — see the note in useTheme.js)
+//   per-device      →  native storage or localStorage
+//                      (push registration, "last seen")
+//
+// The rule of thumb: if two people in the same house would disagree about it
+// and the screen is shared, it's household-wide. Skins are personal because you
+// are the only one looking at your phone. Notifications are per-device because
+// a phone and an iPad are two places you might be.
+//
+// Settings written to the jsonb need no migration, which is why the list keeps
+// growing — but it also means nothing validates them. Read them defensively.
 export function HouseholdModal({ onClose }) {
   const { household, members, addMember, currentMember, settings, saveSettings } = useHousehold();
   const { signOut, setPassword } = useAuth();

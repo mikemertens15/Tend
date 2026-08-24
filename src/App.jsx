@@ -46,6 +46,43 @@ import { ResetPassword } from './auth/ResetPassword';
 import { Onboarding } from './household/Onboarding';
 import { HouseholdModal } from './household/HouseholdModal';
 
+// The root: four gates, then a router, then one of about twenty views.
+//
+// Reading order for anyone new — this file is the map.
+//
+//   1. Public routes.      `#/sitter/<token>` and `#/widget/<token>` return
+//                          before any auth check at all, because the thing
+//                          reading them has no account and can't get one.
+//   2. Auth gate.          No session → SignIn. A password-recovery link puts
+//                          the app in `recovering` and forces ResetPassword,
+//                          even though a session technically exists.
+//   3. Household gate.     Signed in but in no household → Onboarding. Almost
+//                          nothing in the app works without a household id,
+//                          because it's the partition key for every RLS policy.
+//   4. Section gate.       A route whose section is switched off stops
+//                          resolving and falls back to Home (see `reachable`),
+//                          so an old bookmark can't land on a dead page.
+//
+// **Routing is the URL hash**, via `useHashRoute` — no router dependency. That
+// buys deep links, a working back button, and a refresh that stays put, which
+// is all this app needs. A "route" is just a string: 'chores', 'games',
+// 'sitter/abc123'.
+//
+// **Four hooks live up here rather than in the views that use them** —
+// `useTasks`, `useSystems`, `useMeals`, `useGoals` — and all for the same
+// reason: Home summarises each of them *and* each has a section of its own, so
+// two copies would mean two fetches, two realtime channels, and two versions of
+// the truth for a moment after every write. Everything else is fetched by the
+// view that shows it.
+//
+// All but `useTasks` take `{ enabled: isOn(...) }`, so a switched-off section
+// costs nothing. Tasks are exempt because Chores is a core section that can't
+// be switched off.
+//
+// **Everything except Home and Chores is a lazy() chunk.** One is where you
+// land and the other is where most people go next; the rest arrive when asked
+// for, behind a single Suspense boundary around the content area only, so the
+// nav never flickers.
 export default function App() {
   const { session, loading: authLoading, recovering } = useAuth();
   const { household, loading: householdLoading } = useHousehold();
