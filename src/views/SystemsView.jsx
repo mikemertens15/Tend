@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { colors, tone, shadows, fonts } from '../theme';
 import { Card } from '../components/ui';
 import { SystemModal } from '../components/SystemModal';
-import { statusColor } from './HomeView';
+import { statusColor } from '../theme';
 import { useIsNarrow } from '../useMediaQuery';
 import { currentSeason, alreadyTracked } from '../data/seasons';
 

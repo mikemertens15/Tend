@@ -30,11 +30,13 @@ export function Avatar({ who, size = 36 }) {
 }
 
 // Tappable rounded checkbox; filled with a checkmark when done.
-export function Check({ done, onClick }) {
+export function Check({ done, onClick, label }) {
   return (
     <button
       onClick={onClick}
-      aria-label={done ? 'Mark as not done' : 'Mark as done'}
+      role="checkbox"
+      aria-checked={Boolean(done)}
+      aria-label={`${done ? 'Mark as not done' : 'Mark as done'}${label ? `: ${label}` : ''}`}
       style={
         done
           ? {

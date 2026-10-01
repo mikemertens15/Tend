@@ -36,6 +36,12 @@ export const tone = {
   green: 'var(--t-green)',
 };
 
+export function statusColor(value) {
+  if (value === 'red') return tone.red;
+  if (value === 'amber') return tone.amberText;
+  return tone.green;
+}
+
 export const heroGradient = 'var(--g-hero)';
 
 // The trophy shelf. Deliberately not part of `colors` — these don't change with

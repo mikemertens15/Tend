@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useHousehold } from '../household/HouseholdProvider';
 import { dayStr, addDays, parseDay, daysUntil, monthDay, shortDay } from '../dates';
+import { useWallClock } from '../useWallClock';
 
 // Tasks are dated. `due_on` is the only stored schedule — the "overdue /
 // today / soon" bucket, the label on the pill and the calendar column are all
@@ -31,23 +32,33 @@ export function useTasks() {
   const { household, members } = useHousehold();
   const householdId = household?.id ?? null;
   const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const pending = useRef(new Set());
+  const today = dayStr(useWallClock());
 
   const nameById = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m.name])), [members]);
 
   const fetchTasks = useCallback(async () => {
     if (!householdId) {
       setRows([]);
+      setLoading(false);
       return;
     }
     const cutoff = addDays(dayStr(), -DONE_WINDOW_DAYS);
-    const { data } = await supabase
+    const { data, error: fetchError } = await supabase
       .from('tasks')
       .select('*')
       .eq('household_id', householdId)
       .or(`done.eq.false,due_on.gte.${cutoff}`)
       .order('due_on', { ascending: true })
       .order('created_at', { ascending: true });
-    setRows(data ?? []);
+    if (fetchError) setError('Could not load your tasks. Check your connection and try again.');
+    else {
+      setRows(data ?? []);
+      setError('');
+    }
+    setLoading(false);
   }, [householdId]);
 
   useEffect(() => {
@@ -88,9 +99,9 @@ export function useTasks() {
         dueOn: r.due_on,
         repeatDays: r.repeat_days ?? null,
         repeatLabel: repeatLabel(r.repeat_days),
-        ...describeDue(r.due_on),
+        ...describeDue(r.due_on, parseDay(today)),
       })),
-    [rows, nameById],
+    [rows, nameById, today],
   );
 
   // Completing a repeating task books the next one. Un-completing just
@@ -99,53 +110,70 @@ export function useTasks() {
   const toggle = useCallback(
     async (id) => {
       const current = rows.find((r) => r.id === id);
-      if (!current) return;
-      const nowDone = !current.done;
+      if (!current || pending.current.has(id)) return;
+      pending.current.add(id);
+      try {
+        const nowDone = !current.done;
 
-      setRows((rs) => rs.map((r) => (r.id === id ? { ...r, done: nowDone } : r)));
-      const { error } = await supabase.from('tasks').update({ done: nowDone }).eq('id', id);
-      if (error) {
-        fetchTasks();
-        return;
-      }
-
-      if (nowDone && current.repeat_days) {
-        const already = rows.some(
-          (r) =>
-            r.id !== current.id &&
-            !r.done &&
-            r.title === current.title &&
-            r.cat === current.cat &&
-            r.assignee_id === current.assignee_id &&
-            r.due_on > current.due_on,
-        );
-        if (!already) {
-          await supabase.from('tasks').insert({
-            household_id: current.household_id,
-            title: current.title,
-            cat: current.cat,
-            assignee_id: current.assignee_id,
-            note: current.note,
-            repeat_days: current.repeat_days,
-            room: current.room,
-            effort_minutes: current.effort_minutes,
-            due_on: nextOccurrence(current.due_on, current.repeat_days),
-            done: false,
-          });
+        setRows((rs) => rs.map((r) => (r.id === id ? { ...r, done: nowDone } : r)));
+        const { error } = await supabase
+          .from('tasks')
+          .update({ done: nowDone })
+          .eq('id', id)
+          .select('id')
+          .single();
+        if (error) {
+          await fetchTasks();
+          throw new Error('Could not update this task. Please try again.');
         }
+
+        if (nowDone && current.repeat_days) {
+          const already = rows.some(
+            (r) =>
+              r.id !== current.id &&
+              !r.done &&
+              r.title === current.title &&
+              r.cat === current.cat &&
+              r.assignee_id === current.assignee_id &&
+              r.due_on > current.due_on,
+          );
+          if (!already) {
+            const { error: repeatError } = await supabase.from('tasks').insert({
+              household_id: current.household_id,
+              title: current.title,
+              cat: current.cat,
+              assignee_id: current.assignee_id,
+              note: current.note,
+              repeat_days: current.repeat_days,
+              room: current.room,
+              effort_minutes: current.effort_minutes,
+              due_on: nextOccurrence(current.due_on, current.repeat_days),
+              done: false,
+            });
+            if (repeatError) {
+              await fetchTasks();
+              throw new Error(
+                'Task completed, but the next repeat could not be created. Add the next task manually.',
+              );
+            }
+          }
+        }
+        await fetchTasks();
+      } finally {
+        pending.current.delete(id);
       }
-      fetchTasks();
     },
     [rows, fetchTasks],
   );
 
   const addTask = useCallback(
     async (fields) => {
-      if (!householdId) return;
+      if (!householdId) throw new Error('Choose a household before adding a task.');
       const { error } = await supabase
         .from('tasks')
         .insert({ household_id: householdId, ...taskColumns(fields), done: false });
-      if (!error) fetchTasks();
+      if (error) throw new Error('Could not add your task. Please try again.');
+      await fetchTasks();
     },
     [householdId, fetchTasks],
   );
@@ -159,8 +187,11 @@ export function useTasks() {
     async (id, fields) => {
       const patch = taskColumns(fields);
       setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-      const { error } = await supabase.from('tasks').update(patch).eq('id', id);
-      if (error) fetchTasks();
+      const { error } = await supabase.from('tasks').update(patch).eq('id', id).select('id').single();
+      if (error) {
+        await fetchTasks();
+        throw new Error('Could not save your task. Please try again.');
+      }
     },
     [fetchTasks],
   );
@@ -176,7 +207,10 @@ export function useTasks() {
       const set = new Set(list);
       setRows((rs) => rs.filter((r) => !set.has(r.id)));
       const { error } = await supabase.from('tasks').delete().in('id', list);
-      if (error) fetchTasks();
+      if (error) {
+        await fetchTasks();
+        throw new Error('Could not delete your task. Please try again.');
+      }
     },
     [fetchTasks],
   );
@@ -196,13 +230,25 @@ export function useTasks() {
       const today = dayStr();
       const set = new Set(ids);
       setRows((rs) => rs.map((r) => (set.has(r.id) ? { ...r, due_on: today } : r)));
-      await supabase.from('tasks').update({ due_on: today }).in('id', ids);
-      fetchTasks();
+      const { error } = await supabase.from('tasks').update({ due_on: today }).in('id', ids);
+      await fetchTasks();
+      if (error) throw new Error('Could not move these tasks to today. Please try again.');
     },
     [fetchTasks],
   );
 
-  return { tasks, toggle, addTask, updateTask, removeTask, removeTasks, rollForward };
+  return {
+    tasks,
+    loading,
+    error,
+    refresh: fetchTasks,
+    toggle,
+    addTask,
+    updateTask,
+    removeTask,
+    removeTasks,
+    rollForward,
+  };
 }
 
 // The columns a task form owns, in one place, so adding and editing can't drift
@@ -231,9 +277,9 @@ function nextOccurrence(dueOn, repeatDays) {
 }
 
 // The single source of "when is this due" for pills, sorting and grouping.
-function describeDue(dueOn) {
+function describeDue(dueOn, today) {
   const date = parseDay(dueOn);
-  const daysLeft = daysUntil(date);
+  const daysLeft = daysUntil(date, today);
 
   if (daysLeft < 0) {
     return {

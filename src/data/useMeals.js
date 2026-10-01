@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useHousehold } from '../household/HouseholdProvider';
 import { getWeek, dayStr } from '../dates';
+import { useWallClock } from '../useWallClock';
 
 // Supabase-backed store for the weekly meal plan. Fetches a four-week window
 // (last week through two weeks out) so the planner can page between weeks
@@ -13,6 +14,7 @@ export function useMeals({ enabled = true } = {}) {
   const { household, members } = useHousehold();
   const householdId = enabled ? (household?.id ?? null) : null;
   const [rows, setRows] = useState([]);
+  const mondayKey = dayStr(getWeek(useWallClock()).monday);
 
   const nameById = useMemo(() => {
     const m = {};
@@ -22,13 +24,13 @@ export function useMeals({ enabled = true } = {}) {
 
   // Computed once per mount, like the dashboard's week.
   const range = useMemo(() => {
-    const { monday } = getWeek();
+    const { monday } = getWeek(new Date(`${mondayKey}T12:00:00`));
     const start = new Date(monday);
     start.setDate(start.getDate() - 7);
     const end = new Date(monday);
     end.setDate(end.getDate() + 20);
     return { start: dayStr(start), end: dayStr(end) };
-  }, []);
+  }, [mondayKey]);
 
   const fetchMeals = useCallback(async () => {
     if (!householdId) {

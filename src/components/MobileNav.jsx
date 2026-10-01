@@ -6,7 +6,7 @@ import { useSections } from '../data/useSections';
 // Phone navigation. The top bar's inline nav side-scrolled, which meant half
 // the app was hidden behind a swipe nobody knew was there. Four fixed tabs and
 // a More sheet puts everything one tap from the thumb instead.
-export function MobileNav({ view, setView, hobbyRoute }) {
+export function MobileNav({ view, setView }) {
   const [moreOpen, setMoreOpen] = useState(false);
   const { groups, tabs: tabKeys } = useSections();
 
@@ -70,7 +70,7 @@ export function MobileNav({ view, setView, hobbyRoute }) {
                 )}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {group.items.map(([key, label, icon]) => {
-                    const active = view === key || (key === 'hobbies' && hobbyRoute);
+                    const active = view === key;
                     return (
                       <button
                         key={key}
@@ -99,6 +99,7 @@ export function MobileNav({ view, setView, hobbyRoute }) {
                 </div>
               </div>
             ))}
+            <button onClick={() => go('releases')} style={{ color: colors.accent, font: `600 13px ${fonts.sans}`, padding: '10px 0' }}>What’s new</button>
           </div>
         </div>
       )}

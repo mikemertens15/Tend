@@ -89,6 +89,7 @@ export function useEvents({ enabled = true } = {}) {
   const [exceptionRows, setExceptionRows] = useState([]);
   const [paymentRows, setPaymentRows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const nameById = useMemo(() => Object.fromEntries(members.map((m) => [m.id, m.name])), [members]);
 
@@ -109,6 +110,12 @@ export function useEvents({ enabled = true } = {}) {
       supabase.from('event_exceptions').select('*').eq('household_id', householdId),
       supabase.from('bill_payments').select('*').eq('household_id', householdId),
     ]);
+    if (events.error || exceptions.error || payments.error) {
+      setError('Could not load your calendar. Check your connection and try again.');
+      setLoading(false);
+      return;
+    }
+    setError('');
     setRows(events.data ?? []);
     setExceptionRows(exceptions.data ?? []);
     setPaymentRows(payments.data ?? []);
@@ -193,7 +200,7 @@ export function useEvents({ enabled = true } = {}) {
   );
 
   // The derived fields every consumer wants and nobody should compute twice.
-  const decorate = (o) => {
+  const decorate = useCallback((o) => {
     const allDay = o.startMinutes == null;
     // Whether *this month's* copy of the bill is settled. Keyed on the
     // occurrence date rather than the day it lands on, so moving a due date
@@ -224,11 +231,11 @@ export function useEvents({ enabled = true } = {}) {
           ? Number(o.date.slice(0, 4)) - Number(o.raw.on_date.slice(0, 4))
           : null,
     };
-  };
+  }, [payments]);
 
   // A day after the first of a multi-day event. It carries no time of its own —
   // a four-day trip isn't four events that each start at 9am.
-  const continuationOf = (o, day) =>
+  const continuationOf = useCallback((o, day) =>
     decorate({
       ...o,
       date: day,
@@ -237,7 +244,7 @@ export function useEvents({ enabled = true } = {}) {
       startMinutes: null,
       endMinutes: null,
       continuation: true,
-    });
+    }), [decorate]);
 
   // Every occurrence between two dates, flattened and sorted — the shape the
   // grid, the agenda, the hub and the Earned view all want.
@@ -277,7 +284,7 @@ export function useEvents({ enabled = true } = {}) {
     },
     // `payments` is in here because decorate() reads it. Without it, ticking a
     // bill paid would update the map and never redraw the grid.
-    [rows, exceptions, payments, buildOccurrence],
+    [rows, exceptions, buildOccurrence, decorate, continuationOf],
   );
 
   // The next N days, for the dashboard and the kitchen display.
@@ -364,8 +371,8 @@ export function useEvents({ enabled = true } = {}) {
         .insert({ household_id: householdId, ...fields })
         .select()
         .single();
-      if (error) return null;
-      fetchEvents();
+      if (error) throw new Error('Could not add your event. Please try again.');
+      await fetchEvents();
       return data;
     },
     [householdId, fetchEvents],
@@ -374,10 +381,11 @@ export function useEvents({ enabled = true } = {}) {
   const updateEvent = useCallback(
     async (id, patch) => {
       setRows((rs) => rs.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-      await supabase.from('events').update(patch).eq('id', id);
+      const { error } = await supabase.from('events').update(patch).eq('id', id).select('id').single();
       // Always re-read rather than trusting the patch: changing a repeat rule
       // changes which dates exist, and the optimistic row above can't know that.
-      fetchEvents();
+      await fetchEvents();
+      if (error) throw new Error('Could not save your event. Please try again.');
     },
     [fetchEvents],
   );
@@ -502,6 +510,7 @@ export function useEvents({ enabled = true } = {}) {
     calendars,
     calendarById,
     loading,
+    error,
     between,
     upcoming,
     bills,

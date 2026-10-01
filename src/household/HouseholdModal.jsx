@@ -133,11 +133,10 @@ export function HouseholdModal({ onClose }) {
           {members.length} {members.length === 1 ? 'person' : 'people'}
         </div>
 
-        {/* What this household actually uses. Home and Chores aren't listed —
-            they're the app, not features of it. */}
+        {/* Only supporting sections are optional; the four daily essentials stay. */}
         <Label>What Tend looks after</Label>
         <div style={{ font: `400 12px/1.5 ${fonts.sans}`, color: colors.muted, marginTop: -4, marginBottom: 10 }}>
-          Switch off anything you don't want. It leaves the menu, and Tend stops loading it.
+          Home, Tasks, Calendar, and Groceries are always ready. Choose which extras your household uses.
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 24 }}>
           {OPTIONAL_SECTIONS.map(([key, label, icon]) => {

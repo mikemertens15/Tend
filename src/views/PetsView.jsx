@@ -8,7 +8,7 @@ import { PetModal } from '../components/PetModal';
 import { PetCareModal } from '../components/PetCareModal';
 import { PetLogModal } from '../components/PetLogModal';
 import { ShareLinkModal } from '../components/ShareLinkModal';
-import { statusColor } from './HomeView';
+import { statusColor } from '../theme';
 import { dayStr } from '../dates';
 
 // Feeding first, everything else after. The daily question in a house with

@@ -3,7 +3,7 @@ import { colors, tone, shadows, fonts } from '../theme';
 import { Card, Avatar } from '../components/ui';
 import { GoalModal } from '../components/GoalModal';
 import { targetTone } from '../data/useGoals';
-import { statusColor } from './HomeView';
+import { statusColor } from '../theme';
 import { useIsNarrow } from '../useMediaQuery';
 
 // Life goals — the long arcs that don't fit a weekly chore list.

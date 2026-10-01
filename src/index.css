@@ -398,3 +398,69 @@ html.tend-native body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
 }
+
+/* Household essentials: common layouts follow the same tokens as the older sections. */
+.tend-main { max-width: 1180px; margin: 0 auto; padding: 36px; }
+.tend-top-nav { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 16px 36px; backdrop-filter: blur(12px); }
+.tend-brand { display: flex; align-items: center; gap: 10px; }
+.tend-brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: var(--c-accent); color: var(--c-on-accent); font-size: 28px; }
+.tend-desktop-nav { display: flex; gap: 6px; }
+.tend-desktop-nav button { padding: 10px 16px; border-radius: 12px; color: var(--c-muted2); font-weight: 600; font-size: 13px; }
+.tend-desktop-nav button[aria-current=page] { background: var(--c-chip-bg); color: var(--c-ink); }
+.tend-more-menu { position: absolute; top: calc(100% + 12px); right: 0; z-index: 22; width: 220px; padding: 8px; border: 1px solid var(--c-card-border); border-radius: 16px; background: var(--c-card); box-shadow: var(--s-modal); }
+.tend-more-menu button { display: block; width: 100%; text-align: left; }
+.tend-more-menu button:hover { background: var(--c-input-bg); }
+.tend-menu-backdrop { position: fixed; inset: 0; z-index: 21; cursor: default; }
+.tend-home-intro, .tend-page-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 30px; }
+.tend-main h1 { font: 400 38px/1.15 'Instrument Serif', Georgia, serif; margin: 8px 0; }
+.tend-main h2 { font: 400 24px/1.2 'Instrument Serif', Georgia, serif; margin: 6px 0; }
+.tend-home-intro p, .tend-page-heading p { color: var(--c-muted2); font-size: 14px; margin: 8px 0 0; line-height: 1.5; }
+.tend-eyebrow { font-size: 10px; text-transform: uppercase; letter-spacing: .09em; font-weight: 700; color: var(--c-muted2); line-height: 1.6; }
+.tend-primary, .tend-secondary { padding: 11px 18px; border-radius: 12px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.tend-primary { background: var(--c-accent); color: var(--c-on-accent); }
+.tend-secondary { background: var(--c-card); border: 1px solid var(--c-card-border); color: var(--c-ink); }
+.tend-home-actions { display: flex; gap: 10px; }
+.tend-home-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 22px; align-items: start; }
+.tend-card-heading { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+.tend-text-button { font-size: 12px; font-weight: 600; color: var(--c-accent); white-space: nowrap; padding: 6px 0; }
+.tend-task-row { display: flex; align-items: center; gap: 12px; padding: 9px 0; }
+.tend-task-row:first-child { border-top: 0 !important; }
+.tend-task-row > button[role=checkbox] { width: 28px !important; height: 28px !important; }
+.tend-agenda-row { display: flex; align-items: start; width: 100%; text-align: left; gap: 16px; padding: 18px 0; border-top: 1px solid var(--c-divider); font-size: 14px; }
+.tend-agenda-date { width: 48px; flex-shrink: 0; font-size: 11px; font-weight: 700; padding-top: 3px; color: var(--c-accent); }
+.tend-helper-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.tend-helper { display: flex !important; align-items: center; text-align: left; gap: 14px; padding: 20px; }
+.tend-helper strong { font-size: 14px; }
+.tend-helper-icon { display: grid; place-items: center; flex-shrink: 0; width: 40px; height: 40px; border-radius: 12px; background: var(--c-input-bg); font-size: 20px; }
+.tend-helper-description { display: block; color: var(--c-muted2); font-size: 12px; line-height: 1.5; margin-top: 4px; overflow-wrap: anywhere; }
+.tend-task-filters { margin-bottom: 20px; }
+.tend-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.tend-tabs button { font-size: 13px; font-weight: 600; color: var(--c-muted2); padding: 9px 16px; border-radius: 12px; }
+.tend-tabs button[aria-pressed=true] { background: var(--c-accent); color: var(--c-on-accent); }
+.tend-filter-inputs { display: flex; gap: 12px; }
+.tend-filter-inputs input, .tend-filter-inputs select { background: var(--c-card); color: var(--c-ink); border: 1px solid var(--c-input-border); border-radius: 12px; padding: 12px 14px; font-size: 13px; min-width: 0; }
+.tend-filter-inputs input { flex: 1; }
+.tend-filter-inputs select { max-width: 45%; }
+.tend-empty { padding: 32px 10px; text-align: center; color: var(--c-muted2); font-size: 14px; line-height: 1.6; }
+.tend-error { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border: 1px solid var(--t-red); border-radius: 12px; color: var(--c-ink); background: var(--c-card); margin-bottom: 20px; font-size: 13px; }
+.tend-error button { color: var(--c-accent); font-weight: 600; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--c-accent); outline-offset: 3px; }
+@media (max-width: 900px) {
+  .tend-top-nav { padding: 14px 20px; gap: 12px; }
+  .tend-desktop-nav button { padding: 10px 12px; }
+  .tend-home-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .tend-main { padding: 24px 18px; }
+  .tend-top-nav { padding: 12px 18px; }
+  .tend-home-intro { align-items: start; flex-direction: column; gap: 18px; }
+  .tend-main h1 { font-size: 32px; }
+  .tend-helper-grid { grid-template-columns: 1fr; }
+  .tend-task-avatar { display: none; }
+  .tend-task-row { gap: 10px; }
+  .tend-task-row > button[role=checkbox] { width: 26px !important; height: 26px !important; }
+  .tend-tabs button { padding: 9px 12px; }
+  .tend-card-heading { align-items: start; }
+}
+input:focus-visible, textarea:focus-visible, select:focus-visible { outline: 2px solid var(--c-accent) !important; }
+.tend-home-grid > *, .tend-helper-grid > * { min-width: 0; }

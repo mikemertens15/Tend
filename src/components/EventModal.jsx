@@ -92,6 +92,8 @@ export function EventModal({
   // one of it.
   const [scope, setScope] = useState('all');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState('');
 
   const isWork = kind === WORK_KIND;
   const isBill = kind === BILL_KIND;
@@ -206,35 +208,33 @@ export function EventModal({
     };
   }
 
-  function submit() {
-    if (!title.trim()) return;
-
-    if (!editing) {
-      onCreate(seriesFields());
+  async function submit() {
+    if (!title.trim() || !onDate || busy) return;
+    setBusy(true);
+    setSaveError('');
+    try {
+      if (!editing) {
+        const created = await onCreate(seriesFields());
+        if (!created) throw new Error('Could not add your event. Please try again.');
+      } else if (!repeats || scope === 'all') {
+        await onUpdateSeries(event.id, seriesFields());
+      } else if (scope === 'one') {
+        await onOverrideOccurrence(event.id, occurrence.occurrenceDate, {
+          title: title.trim() === event.title ? null : title.trim(),
+          on_date: onDate === occurrence.occurrenceDate ? null : onDate,
+          start_time: startTime || null,
+          end_time: startTime && endTime ? endTime : null,
+          note: note.trim() || null,
+        });
+      } else {
+        await onSplitSeries(event.id, occurrence.occurrenceDate, seriesFields());
+      }
       onClose();
-      return;
+    } catch (err) {
+      setSaveError(err?.message || 'Could not save your event. Please try again.');
+    } finally {
+      setBusy(false);
     }
-
-    if (!repeats) {
-      onUpdateSeries(event.id, seriesFields());
-      onClose();
-      return;
-    }
-
-    if (scope === 'one') {
-      onOverrideOccurrence(event.id, occurrence.occurrenceDate, {
-        title: title.trim() === event.title ? null : title.trim(),
-        on_date: onDate === occurrence.occurrenceDate ? null : onDate,
-        start_time: startTime || null,
-        end_time: startTime && endTime ? endTime : null,
-        note: note.trim() || null,
-      });
-    } else if (scope === 'future') {
-      onSplitSeries(event.id, occurrence.occurrenceDate, seriesFields());
-    } else {
-      onUpdateSeries(event.id, seriesFields());
-    }
-    onClose();
   }
 
   const cal = calendars.find((c) => c.id === calendarId) ?? null;
@@ -243,18 +243,19 @@ export function EventModal({
   return (
     <ModalShell
       title={isBill ? (editing ? 'Edit bill' : 'Add a bill') : editing ? 'Edit event' : 'Add an event'}
-      onClose={onClose}
+      onClose={() => { if (!busy) onClose(); }}
       width={520}
       footer={
         <>
           {editing && (
             <DeleteButton onClick={() => setConfirmingDelete((v) => !v)}>Delete</DeleteButton>
           )}
-          <GhostButton onClick={onClose}>Cancel</GhostButton>
-          <PrimaryButton onClick={submit}>{editing ? 'Save' : 'Add event'}</PrimaryButton>
+          <GhostButton onClick={() => { if (!busy) onClose(); }}>Cancel</GhostButton>
+          <PrimaryButton onClick={submit} disabled={busy || !title.trim() || !onDate}>{busy ? 'Saving…' : editing ? 'Save' : 'Add event'}</PrimaryButton>
         </>
       }
     >
+      {saveError && <p role="alert" style={{ color: tone.red, fontSize: 13 }}>{saveError}</p>}
       {confirmingDelete && (
         <div
           style={{
@@ -370,9 +371,10 @@ export function EventModal({
       <input
         autoFocus
         value={title}
+        aria-label="Event title"
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && submit()}
-        placeholder="e.g. Organic Chemistry, or Mum's birthday"
+        placeholder="e.g. Dentist appointment or family dinner"
         style={inputStyle}
       />
 
@@ -410,7 +412,7 @@ export function EventModal({
       <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 140px', minWidth: 0 }}>
           <Label>{kind === 'birthday' ? 'Date of birth' : 'Date'}</Label>
-          <input type="date" value={onDate} onChange={(e) => setOnDate(e.target.value)} style={inputStyle} />
+          <input type="date" aria-label="Event date" required value={onDate} onChange={(e) => setOnDate(e.target.value)} style={inputStyle} />
         </div>
         {!allDay && (
           <>
@@ -471,7 +473,7 @@ export function EventModal({
         </>
       )}
 
-      {isWork && (
+      {isWork && jobs.length > 0 && (
         <>
           <Label>Which job?</Label>
           {myJobs.length === 0 ? (

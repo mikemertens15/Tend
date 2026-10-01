@@ -1,482 +1,204 @@
-import { colors, tone, heroGradient, fonts, catLabel } from '../theme';
-import { greeting, longDate, shortDate, dayStr } from '../dates';
-import { Avatar, Card, Pill, Check, ProgressBar } from '../components/ui';
-import { useIsNarrow } from '../useMediaQuery';
+import { colors, fonts } from '../theme';
+import { dayStr, greeting, longDate, parseDay, shortDate, addDays } from '../dates';
+import { Card } from '../components/ui';
+import { TaskRow } from '../components/TaskRow';
 import { useHousehold } from '../household/HouseholdProvider';
-import { useCollection } from '../data/useCollection';
-import { DOMAINS, ALL_HOBBY_DOMAINS, isUnderway } from '../data/collections';
-import { targetTone } from '../data/useGoals';
-import { usePets } from '../data/usePets';
-import { ROOMS } from '../data/rooms';
-import { buildNudges } from '../data/nudges';
+import { useWallClock } from '../useWallClock';
+import { useSections } from '../data/useSections';
+import { selectTasks } from '../data/taskList';
 import { buildCatchUp } from '../data/catchup';
 import { CatchUpCard } from '../components/CatchUpCard';
-import { useSections } from '../data/useSections';
-import { useWeather } from '../data/useWeather';
 
-// The dashboard: one screen that answers "what needs me today" without opening
-// anything else.
-//
-// This is the only view that reads across sections, which makes it the one
-// place two rules have to be obeyed carefully.
-//
-// **It summarises, it doesn't own.** Every number here is derived from data a
-// section already owns — `tasks` and `systems` are handed down from App.jsx,
-// hobbies and pets come from their own hooks. Nothing on this page is the
-// authoritative copy of anything, so there's no writing here beyond ticking a
-// chore, which goes straight back to `useTasks` through `onToggle`.
-//
-// **Switched-off sections must vanish completely.** Every hook Home calls takes
-// `{ enabled }` wired to `isOn(...)`, so turning a section off doesn't just hide
-// its card — the fetch and its realtime channel go too. See "Sections you can
-// switch off" in the README for why that matters and what it measures out at.
-//
-// The order of the page is deliberate and is the one thing worth preserving:
-// the catch-up card comes first, *before* anything that counts what you missed.
-// Landing on a tally of failures is how an app like this gets closed.
+// Home answers two questions: what needs doing, and what's happening next.
 export function HomeView({
   tasks,
+  loading,
+  error,
   systems,
   mealsByKey = {},
-  goals = [],
-  week,
+  events,
   onToggle,
   onEditTask,
+  onAddTask,
+  onAddEvent,
   navigate,
-  awayDays = 0,
-  catchUpDismissed = false,
+  awayDays,
+  catchUpDismissed,
   onDismissCatchUp,
   onRollForward,
 }) {
-  const narrow = useIsNarrow();
-  const { order, currentMember } = useHousehold();
+  const { household, currentMember } = useHousehold();
   const { isOn } = useSections();
-  // Switching a section off has to take its dashboard card with it. A card for
-  // something that's no longer in the nav is a dead end, and the summary is
-  // half the reason you'd want the section at all.
-  const { items: hobbies } = useCollection(ALL_HOBBY_DOMAINS, { enabled: isOn('hobbies') });
-  // Only Home and the Pets section load this, so the rest of the app doesn't
-  // pay for three tables it isn't showing.
-  const pets = usePets({ enabled: isOn('pets') });
-  const weather = useWeather();
-  const greetingName = currentMember?.name || 'there';
-  const today = week.days[week.todayIndex].date;
-
-  const doneCount = tasks.filter((t) => t.done).length;
-  const overdueCount = tasks.filter((t) => !t.done && t.dueType === 'overdue').length;
-  const todoCount = tasks.filter((t) => !t.done && t.dueType !== 'overdue').length;
-
-  const upNext = tasks
-    .filter((t) => !t.done)
-    .sort((a, b) => a.daysLeft - b.daysLeft)
-    .slice(0, 6);
-
-  const family = order.map((name) => {
-    const mine = tasks.filter((t) => t.who === name);
-    const done = mine.filter((t) => t.done).length;
-    const pct = mine.length ? Math.round((done / mine.length) * 100) : 0;
-    return { name, done, total: mine.length, pct };
-  });
-
-  const inProgress = hobbies.filter(isUnderway).slice(0, 5);
-
-  // Were you gone long enough that the overdue pile needs explaining rather
-  // than just listing? Null when you've been here all along, or when nothing
-  // slipped while you were away.
+  const now = useWallClock();
+  const today = dayStr(now);
+  const due = selectTasks(tasks, { scope: 'today', today });
+  const next = due.length ? due : selectTasks(tasks, { scope: 'upcoming', today });
+  const agenda = events.between(today, addDays(today, 6)).slice(0, 5);
+  const dinner = mealsByKey[`${today}:dinner`];
+  const upkeep = systems.filter((s) => s.tone !== 'green');
   const catchUp = catchUpDismissed ? null : buildCatchUp({ tasks, awayDays });
-
-  // Everything that's actually slipping, gathered from the sections that would
-  // otherwise each need visiting to find out.
-  const nudges = buildNudges({ tasks, systems, pets, catchingUp: Boolean(catchUp), weather });
-
-  // Which rooms still want something, busiest first.
-  const busyRooms = ROOMS.map(([key, label, icon]) => ({
-    key,
-    label,
-    icon,
-    open: tasks.filter((t) => t.cat === 'chore' && !t.done && t.room === key).length,
-  }))
-    .filter((r) => r.open > 0)
-    .sort((a, b) => b.open - a.open);
-
-  // Tonight + the next two evenings for the menu card.
-  const menuDays = [0, 1, 2].map((i) => {
-    const d = new Date(today);
-    d.setDate(d.getDate() + i);
-    const label = i === 0 ? 'Tonight' : i === 1 ? 'Tomorrow' : longDate(d).split(',')[0];
-    return { label, meal: mealsByKey[`${dayStr(d)}:dinner`] };
-  });
+  const helpers = [
+    ['groceries', '🛒', 'Shopping list', 'Keep the next shop together'],
+    ...(isOn('meals')
+      ? [['meals', '🍲', 'Tonight’s dinner', dinner?.title || 'Make a plan for the week']]
+      : []),
+    ...(isOn('systems')
+      ? [
+          [
+            'systems',
+            '🔧',
+            'Home maintenance',
+            upkeep.length ? `${upkeep.length} to check on` : 'Keep the house in good shape',
+          ],
+        ]
+      : []),
+    ...(isOn('pets') ? [['pets', '🐾', 'Pet care', 'Feeding, walks, and routines']] : []),
+    ...(isOn('facts') ? [['facts', '📋', 'House information', 'Useful details, all in one place']] : []),
+  ];
 
   return (
     <div>
-      {/* the door back in, before anything that counts what you missed */}
+      <div className="tend-home-intro">
+        <div>
+          <div className="tend-eyebrow">
+            {household?.name || 'Your home'} · {longDate(now)}
+          </div>
+          <h1>
+            {greeting(now)}, {currentMember?.name || 'there'}.
+          </h1>
+          <p>A little less to keep in your head.</p>
+        </div>
+        <div className="tend-home-actions">
+          <button className="tend-primary" onClick={onAddTask}>
+            + Add task
+          </button>
+          <button className="tend-secondary" onClick={onAddEvent}>
+            + Add event
+          </button>
+        </div>
+      </div>
       {catchUp && (
         <CatchUpCard
           catchUp={catchUp}
-          navigate={navigate}
           onDismiss={onDismissCatchUp}
-          onRoll={() => {
-            onRollForward?.(catchUp.rollIds);
-            onDismissCatchUp?.();
+          onRoll={async () => {
+            if (await onRollForward(catchUp.rollIds)) onDismissCatchUp();
           }}
+          navigate={navigate}
         />
       )}
-
-      {/* hero + family */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: narrow ? '1fr' : '1.1fr 1fr',
-          gap: 22,
-          alignItems: 'stretch',
-          marginBottom: 22,
-        }}
-      >
-        {/* hero */}
-        <div
-          style={{
-            background: heroGradient,
-            borderRadius: 20,
-            padding: '28px 30px',
-            color: colors.onAccent,
-            position: 'relative',
-            overflow: 'hidden',
-          }}
-        >
-          <div style={{ position: 'absolute', right: -40, top: -40, width: 180, height: 180, borderRadius: '50%', background: 'rgba(255,255,255,.07)' }} />
-          <div style={{ position: 'absolute', right: 40, bottom: -60, width: 120, height: 120, borderRadius: '50%', background: 'rgba(255,255,255,.05)' }} />
-          <div style={{ font: `400 31px/1.15 ${fonts.serif}`, maxWidth: 340, position: 'relative' }}>
-            {greeting()}, {greetingName}. The home needs a little love this week.
-          </div>
-          <div style={{ display: 'flex', gap: 36, marginTop: 26, position: 'relative' }}>
-            <HeroStat n={todoCount} label="to do" />
-            <HeroStat n={overdueCount} label="overdue" />
-            <HeroStat n={doneCount} label="done" />
-          </div>
-          <div style={{ font: `400 13px ${fonts.sans}`, opacity: 0.8, marginTop: 24, position: 'relative' }}>
-            {longDate(today)} · Week of {shortDate(week.monday)}
-          </div>
-        </div>
-
-        {/* family */}
-        <Card style={{ padding: '22px 26px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 16 }}>
-            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>The family this week</div>
-            <button onClick={() => navigate('chores')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
-              Manage chores
+      <div className="tend-home-grid">
+        <Card style={{ padding: '24px', borderTop: `3px solid ${colors.accent}` }}>
+          <div className="tend-card-heading">
+            <div>
+              <div className="tend-eyebrow">One thing at a time</div>
+              <h2>{due.length ? 'Needs doing today' : 'Next on the list'}</h2>
+            </div>
+            <button className="tend-text-button" onClick={() => navigate('tasks')}>
+              All tasks →
             </button>
           </div>
-          {family.map((p) => (
-            <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 13, marginBottom: 15 }}>
-              <Avatar who={p.name} size={36} />
-              <div style={{ flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', font: `600 14px ${fonts.sans}`, color: colors.ink }}>
-                  <span>{p.name}</span>
-                  <span style={{ color: colors.muted, fontWeight: 500, fontSize: 12 }}>
-                    {p.done} / {p.total} done
-                  </span>
-                </div>
-                <div style={{ marginTop: 6 }}>
-                  <ProgressBar pct={p.pct} />
-                </div>
-              </div>
-            </div>
-          ))}
-        </Card>
-      </div>
-
-      {/* what's actually slipping */}
-      {nudges.length > 0 && (
-        <Card style={{ padding: '16px 24px', marginBottom: 22 }}>
-          <div style={{ font: `600 11px ${fonts.sans}`, color: colors.faint, letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 12 }}>
-            Needs you
-          </div>
-          <div style={{ display: 'flex', gap: 9, flexWrap: 'wrap' }}>
-            {nudges.map((n) => (
-              <button
-                key={n.key}
-                onClick={() => navigate(n.go)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 9,
-                  padding: '9px 15px',
-                  borderRadius: 20,
-                  background: n.level === 'late' ? colors.chipBg : colors.inputBg,
-                  border: `1px solid ${n.level === 'late' ? tone.red : colors.cardBorder}`,
-                  font: `500 12.5px ${fonts.sans}`,
-                  color: colors.ink,
-                  textAlign: 'left',
-                }}
-              >
-                <span aria-hidden="true" style={{ fontSize: 14 }}>
-                  {n.icon}
-                </span>
-                {n.text}
-              </button>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* up next */}
-      <Card style={{ padding: '22px 26px', marginBottom: 22 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
-          <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Up next</div>
-          {isOn('calendar') && (
-            <button onClick={() => navigate('calendar')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
-              See the week
-            </button>
-          )}
-        </div>
-        {upNext.map((t) => (
-          <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '13px 0', borderTop: `1px solid ${colors.divider}` }}>
-            <Check done={t.done} onClick={() => onToggle(t.id)} />
-            <button
-              onClick={() => onEditTask?.(t)}
-              title="Edit this task"
-              style={{ flex: 1, minWidth: 0, textAlign: 'left' }}
-            >
-              <div
-                style={{
-                  font: `600 14px ${fonts.sans}`,
-                  color: t.done ? colors.faint : colors.ink,
-                  textDecoration: t.done ? 'line-through' : 'none',
-                }}
-              >
-                {t.title}
-              </div>
-              <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-                {catLabel[t.cat]} · {t.note || t.who || 'Anyone'}
-              </div>
-            </button>
-            <Pill task={t} />
-          </div>
-        ))}
-      </Card>
-
-      {/* rooms + systems summary */}
-      <div style={{ display: 'grid', gridTemplateColumns: narrow || !isOn('systems') ? '1fr' : '1fr 1fr', gap: 22 }}>
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('chores')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Room by room</div>
-            <div style={{ font: `500 12px ${fonts.sans}`, color: colors.muted }}>
-              {busyRooms.length ? `${busyRooms.length} need attention` : 'all clear'}
-            </div>
-          </div>
-          {busyRooms.length === 0 ? (
-            <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted }}>
-              {todoCount + overdueCount === 0
-                ? 'Every room is clear. Nothing to do but enjoy it.'
-                : 'No room chores outstanding.'}
-            </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              {busyRooms.slice(0, 6).map((r) => (
-                <span
-                  key={r.key}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '8px 13px',
-                    borderRadius: 20,
-                    background: colors.chipBg,
-                    font: `500 12.5px ${fonts.sans}`,
-                    color: colors.muted3,
-                  }}
-                >
-                  <span aria-hidden="true" style={{ fontSize: 14 }}>
-                    {r.icon}
-                  </span>
-                  {r.label}
-                  <span style={{ font: `700 11.5px ${fonts.sans}`, color: colors.accent }}>{r.open}</span>
-                </span>
+          {error && !next.length ? (
+            <p className="tend-empty">Your tasks are temporarily unavailable.</p>
+          ) : loading ? (
+            <p className="tend-empty">Loading your tasks…</p>
+          ) : next.length ? (
+            <>
+              <p style={{ font: `400 13px ${fonts.sans}`, color: colors.muted2, margin: '0 0 16px' }}>
+                {due.length
+                  ? `${due.length} ${due.length === 1 ? 'task' : 'tasks'} due today or earlier. Share the load, or start small.`
+                  : 'Today is clear. Here’s what’s coming up.'}
+              </p>
+              {next.slice(0, 5).map((task) => (
+                <TaskRow key={task.id} task={task} onToggle={onToggle} onEdit={onEditTask} />
               ))}
-            </div>
-          )}
-        </Card>
-
-        {isOn('systems') && (
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('systems')}>
-          <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink, marginBottom: 14 }}>House health</div>
-          {systems.length === 0 ? (
-            <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted }}>
-              Nothing tracked yet — add the HVAC filter, gutters, smoke detectors…
-            </div>
-          ) : (
-            systems.slice(0, 4).map((s) => (
-              <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 0', borderBottom: `1px solid ${colors.divider}` }}>
-                <div style={{ width: 9, height: 9, borderRadius: '50%', background: tone[s.tone], flexShrink: 0 }} />
-                <div style={{ flex: 1, font: `500 13.5px ${fonts.sans}`, color: colors.ink }}>{s.name}</div>
-                <div style={{ font: `600 12px ${fonts.sans}`, color: statusColor(s.tone), whiteSpace: 'nowrap' }}>{s.status}</div>
-              </div>
-            ))
-          )}
-        </Card>
-        )}
-      </div>
-
-      {/* dinner plan + goals */}
-      {(isOn('meals') || isOn('goals')) && (
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: narrow || !isOn('meals') || !isOn('goals') ? '1fr' : '1fr 1fr',
-          gap: 22,
-          marginTop: 22,
-        }}
-      >
-        {isOn('meals') && (
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('meals')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>On the menu</div>
-            <div style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>Plan the week</div>
-          </div>
-          {menuDays.map((m, i) => (
-            <div key={m.label} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i > 0 ? `1px solid ${colors.divider}` : 'none' }}>
-              <div style={{ width: 76, font: `600 12px ${fonts.sans}`, color: colors.muted2, flexShrink: 0 }}>{m.label}</div>
-              {m.meal ? (
-                <>
-                  <div style={{ flex: 1, font: `600 13.5px ${fonts.sans}`, color: colors.ink, minWidth: 0 }}>{m.meal.title}</div>
-                  {m.meal.cook && <Avatar who={m.meal.cook} size={26} />}
-                </>
-              ) : (
-                <div style={{ flex: 1, font: `400 13px ${fonts.sans}`, color: colors.faint }}>Nothing planned</div>
-              )}
-            </div>
-          ))}
-        </Card>
-        )}
-
-        {isOn('goals') && (
-        <Card as="button" style={{ padding: '22px 26px', cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('goals')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 10 }}>
-            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>Goals in motion</div>
-            <div style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>All goals</div>
-          </div>
-          {goals.length === 0 ? (
-            <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted, marginTop: 6 }}>
-              No goals yet — a race to run, a room to renovate, a trip to save for.
-            </div>
-          ) : (
-            goals.slice(0, 3).map((g, i) => (
-              <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderTop: i > 0 ? `1px solid ${colors.divider}` : 'none' }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ font: `600 13.5px ${fonts.sans}`, color: colors.ink }}>{g.title}</div>
-                  <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 1 }}>{g.owner ?? 'Family goal'}</div>
-                </div>
-                {g.target && (
-                  <span style={{ font: `600 11.5px ${fonts.sans}`, color: statusColor(targetTone(g.target.daysLeft)), whiteSpace: 'nowrap', flexShrink: 0 }}>
-                    {g.target.daysLeft < 0 ? 'Overdue' : `${g.target.label}`}
-                  </span>
-                )}
-              </div>
-            ))
-          )}
-        </Card>
-        )}
-      </div>
-      )}
-
-      {/* the cats — only when there are some */}
-      {pets.pets.length > 0 && (
-        <Card as="button" style={{ padding: '22px 26px', marginTop: 22, cursor: 'pointer', textAlign: 'left' }} onClick={() => navigate('pets')}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 14 }}>
-            <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>The animals</div>
-            <div style={{ font: `500 12.5px ${fonts.sans}`, color: pets.mealsLeft ? colors.accent : tone.green }}>
-              {pets.mealsLeft === 0
-                ? 'All fed today'
-                : `${pets.mealsLeft} ${pets.mealsLeft === 1 ? 'meal' : 'meals'} to go`}
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-            {pets.pets.map((p) => (
-              <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div
-                  aria-hidden="true"
-                  style={{ width: 34, height: 34, borderRadius: 12, background: colors.chipBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}
+              {next.length > 5 && (
+                <button
+                  className="tend-text-button"
+                  style={{ marginTop: 16 }}
+                  onClick={() => navigate('tasks')}
                 >
-                  {p.emoji}
-                </div>
-                <div>
-                  <div style={{ font: `600 13.5px ${fonts.sans}`, color: colors.ink }}>{p.name}</div>
-                  <div style={{ font: `400 11.5px ${fonts.sans}`, color: p.allFed ? tone.green : colors.muted }}>
-                    {p.meals.map((m) => (m.fed ? '●' : '○')).join(' ')} {p.allFed ? 'fed' : 'hungry'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-          {pets.care.some((c) => c.tone === 'red') && (
-            <div style={{ font: `500 12px ${fonts.sans}`, color: tone.red, marginTop: 14 }}>
-              {pets.care.filter((c) => c.tone === 'red').map((c) => c.name).join(' · ')}
+                  See {next.length - 5} more tasks →
+                </button>
+              )}
+            </>
+          ) : (
+            <div className="tend-empty">
+              <h2>A little breathing room.</h2>
+              <p>Your task list is clear. Add a chore, an errand, or anything you want to remember.</p>
+              <button className="tend-text-button" onClick={onAddTask}>
+                + Add your first task
+              </button>
             </div>
           )}
         </Card>
-      )}
-
-      {/* a little life beyond the house */}
-      {isOn('hobbies') && (
-      <Card style={{ padding: '22px 26px', marginTop: 22 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: inProgress.length ? 14 : 0 }}>
-          <div style={{ font: `400 22px ${fonts.serif}`, color: colors.ink }}>On the go</div>
-          <button onClick={() => navigate('hobbies')} style={{ font: `500 12.5px ${fonts.sans}`, color: colors.accent }}>
-            Hobbies
-          </button>
-        </div>
-        {inProgress.length === 0 ? (
-          <div style={{ font: `400 13.5px ${fonts.sans}`, color: colors.muted, marginTop: 10 }}>
-            Nothing in progress — start a game, a book, or something on the bench.
-          </div>
-        ) : (
-          inProgress.map((m, i) => (
-            <div
-              key={m.id}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                padding: '11px 0',
-                borderTop: i > 0 ? `1px solid ${colors.divider}` : 'none',
-              }}
-            >
-              {m.owner && <Avatar who={m.owner} size={30} />}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ font: `600 14px ${fonts.sans}`, color: colors.ink }}>{m.title}</div>
-                <div style={{ font: `400 12px ${fonts.sans}`, color: colors.muted, marginTop: 2 }}>
-                  {[m.owner, m.platform || m.service || m.author || m.craft].filter(Boolean).join(' · ') || '—'}
-                </div>
-              </div>
-              <SummaryChip>{DOMAINS[m.domain].noun}</SummaryChip>
+        <Card style={{ padding: '24px' }}>
+          <div className="tend-card-heading">
+            <div>
+              <div className="tend-eyebrow">The next seven days</div>
+              <h2>Coming up</h2>
             </div>
-          ))
-        )}
-      </Card>
-      )}
+            <button className="tend-text-button" onClick={() => navigate('calendar')}>
+              Calendar →
+            </button>
+          </div>
+          {events.error ? (
+            <p className="tend-empty">Your calendar is temporarily unavailable.</p>
+          ) : events.loading ? (
+            <p className="tend-empty">Loading your calendar…</p>
+          ) : agenda.length ? (
+            agenda.map((event) => (
+              <button
+                key={`${event.id}:${event.date}`}
+                className="tend-agenda-row"
+                onClick={() => navigate('calendar')}
+              >
+                <span className="tend-agenda-date">
+                  {event.date === today ? 'Today' : shortDate(parseDay(event.date))}
+                </span>
+                <span style={{ minWidth: 0, flex: 1 }}>
+                  <span style={{ display: 'block', fontWeight: 600, overflowWrap: 'anywhere' }}>
+                    {event.title}
+                  </span>
+                  <span style={{ display: 'block', marginTop: 4, fontSize: 12, color: colors.muted }}>
+                    {[event.allDay ? 'All day' : event.timeRange, event.who, event.location]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="tend-empty">
+              <h2>Space in the week.</h2>
+              <p>Add appointments, family plans, and the dates you don’t want to forget.</p>
+              <button className="tend-text-button" onClick={onAddEvent}>
+                + Add an event
+              </button>
+            </div>
+          )}
+        </Card>
+      </div>
+      <div className="tend-card-heading" style={{ marginTop: 30 }}>
+        <h2>Around the house</h2>
+        <span style={{ fontSize: 12, color: colors.muted }}>The everyday essentials</span>
+      </div>
+      <div className="tend-helper-grid">
+        {helpers.map(([key, icon, title, description]) => (
+          <Card key={key} as="button" className="tend-helper" onClick={() => navigate(key)}>
+            <span aria-hidden="true" className="tend-helper-icon">
+              {icon}
+            </span>
+            <span>
+              <strong>{title}</strong>
+              <span className="tend-helper-description">{description}</span>
+            </span>
+            <span aria-hidden="true" style={{ marginLeft: 'auto', color: colors.muted }}>
+              →
+            </span>
+          </Card>
+        ))}
+      </div>
     </div>
   );
-}
-
-function HeroStat({ n, label }) {
-  return (
-    <div>
-      <div style={{ font: `600 38px ${fonts.sans}`, lineHeight: 1 }}>{n}</div>
-      <div style={{ font: `400 13px ${fonts.sans}`, opacity: 0.82, marginTop: 3 }}>{label}</div>
-    </div>
-  );
-}
-
-function SummaryChip({ children }) {
-  return (
-    <span style={{ font: `500 11.5px ${fonts.sans}`, color: colors.muted3, background: colors.chipBg, padding: '5px 11px', borderRadius: 20 }}>
-      {children}
-    </span>
-  );
-}
-
-export function statusColor(t) {
-  if (t === 'red') return tone.red;
-  if (t === 'amber') return tone.amberText;
-  return tone.green;
 }

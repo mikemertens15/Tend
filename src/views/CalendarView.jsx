@@ -16,8 +16,7 @@ import {
 import { useIsNarrow } from '../useMediaQuery';
 import { useWallClock } from '../useWallClock';
 import { useHousehold } from '../household/HouseholdProvider';
-import { useEvents, BILL_KIND } from '../data/useEvents';
-import { useJobs } from '../data/useJobs';
+import { BILL_KIND } from '../data/useEvents';
 import { useWeather } from '../data/useWeather';
 import { formatTemp } from '../data/weather';
 import { layoutTimed, busyWindow, nowMinutes, DAY_MINUTES } from '../data/layout';
@@ -58,18 +57,22 @@ const HOUR_PX = 52;
 const HOUR_PX_NARROW = 44;
 const GUTTER = 54;
 
-export function CalendarView({ tasks, navigate }) {
+export function CalendarView({ tasks, navigate, events: ev, createRequest = 0, onCreateHandled }) {
   const narrow = useIsNarrow();
   const { peopleMap, members, currentMember } = useHousehold();
-  const ev = useEvents();
   const { billsDue } = ev;
-  const { activeJobs } = useJobs();
   const weather = useWeather();
   const now = useWallClock();
 
   const [mode, setMode] = useState(narrow ? 'day' : 'week');
   const [offset, setOffset] = useState(0);
   const [editing, setEditing] = useState(null); // { date, time, occurrence } | null
+  useEffect(() => {
+    if (createRequest) {
+      setEditing({ date: dayStr(), time: null, occurrence: null });
+      onCreateHandled?.(0);
+    }
+  }, [createRequest, onCreateHandled]);
   const [displayOpen, setDisplayOpen] = useState(false);
   const [calendarsOpen, setCalendarsOpen] = useState(false);
   const [widgetOpen, setWidgetOpen] = useState(false);
@@ -403,7 +406,6 @@ export function CalendarView({ tasks, navigate }) {
           time={editing.time}
           occurrence={editing.occurrence}
           calendars={ev.calendars}
-          jobs={activeJobs}
           onClose={() => setEditing(null)}
           onCreate={ev.addEvent}
           onUpdateSeries={ev.updateEvent}

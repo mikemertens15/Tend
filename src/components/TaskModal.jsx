@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { colors, tone, fonts } from '../theme';
 import { ModalShell, Label, Chip, inputStyle, PrimaryButton, GhostButton, DeleteButton, MemberPicker } from './Modal';
-import { useHousehold } from '../household/HouseholdProvider';
 import { REPEATS } from '../data/useTasks';
 import { ROOMS, EFFORTS, guessRoom } from '../data/rooms';
 import { dayStr, addDays, parseDay, shortDay } from '../dates';
 
 const CATS = [
-  ['chore', 'Chore'],
+  ['chore', 'Task or chore'],
   ['system', 'Home system'],
 ];
 
@@ -19,13 +18,12 @@ const CATS = [
 // delete, and a line at the top when the thing you're editing is already
 // finished, because that's the state you're most likely to have opened it from.
 export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
-  const { currentMember } = useHousehold();
   const editing = Boolean(task);
 
   const [title, setTitle] = useState(task?.title ?? '');
   const [cat, setCat] = useState(task?.cat ?? 'chore');
   const [assigneeId, setAssigneeId] = useState(
-    editing ? (task.assigneeId ?? null) : (currentMember?.id ?? null),
+    editing ? (task.assigneeId ?? null) : null,
   );
   const [dueOn, setDueOn] = useState(task?.dueOn ?? dayStr());
   const [repeatDays, setRepeatDays] = useState(task?.repeatDays ?? null);
@@ -36,6 +34,9 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
   // an existing task's room was already a decision, so it's never re-guessed.
   const [roomTouched, setRoomTouched] = useState(editing);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   function retitle(next) {
     setTitle(next);
@@ -58,26 +59,40 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
     ['Next week', addDays(dayStr(), 7)],
   ];
 
+  async function perform(action) {
+    if (busy) return;
+    setBusy(true);
+    setError('');
+    try {
+      await action();
+      onClose();
+    } catch (err) {
+      setError(err?.message || 'Could not save your task. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function submit() {
-    if (!title.trim()) return;
-    onSave({ title, cat, assigneeId, note, dueOn, repeatDays, room, effortMinutes });
-    onClose();
+    if (!title.trim() || !dueOn || busy) return;
+    perform(() => onSave({ title, cat, assigneeId, note, dueOn, repeatDays, room, effortMinutes }));
   }
 
   return (
     <ModalShell
       title={editing ? 'Edit task' : 'Add a task'}
-      onClose={onClose}
+      onClose={() => { if (!busy) onClose(); }}
       footer={
         <>
           {editing && <DeleteButton onClick={() => setConfirmingDelete((v) => !v)}>Delete</DeleteButton>}
           <div style={{ marginLeft: editing ? 0 : 'auto', display: 'flex', gap: 10 }}>
-            <GhostButton onClick={onClose}>Cancel</GhostButton>
-            <PrimaryButton onClick={submit}>{editing ? 'Save' : 'Add task'}</PrimaryButton>
+            <GhostButton onClick={() => { if (!busy) onClose(); }}>Cancel</GhostButton>
+            <PrimaryButton onClick={submit} disabled={busy || !title.trim() || !dueOn}>{busy ? 'Saving…' : editing ? 'Save task' : 'Add task'}</PrimaryButton>
           </div>
         </>
       }
     >
+      {error && <p role="alert" style={{ color: tone.red, fontSize: 13 }}>{error}</p>}
       {confirmingDelete && (
         <div
           style={{
@@ -95,8 +110,7 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
           </div>
           <button
             onClick={() => {
-              onDelete(task.id);
-              onClose();
+              perform(() => onDelete(task.id));
             }}
             style={{ padding: '8px 14px', borderRadius: 20, background: tone.red, color: colors.onAccent, font: `600 12px ${fonts.sans}` }}
           >
@@ -124,8 +138,7 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
           {onToggle && (
             <button
               onClick={() => {
-                onToggle(task.id);
-                onClose();
+                perform(() => onToggle(task.id));
               }}
               style={{ padding: '7px 13px', borderRadius: 18, background: colors.card, border: `1px solid ${colors.cardBorder}`, color: colors.ink, font: `600 12px ${fonts.sans}` }}
             >
@@ -138,6 +151,7 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
       <Label>What needs doing?</Label>
       <input
         autoFocus
+        aria-label="Task title"
         value={title}
         onChange={(e) => retitle(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && submit()}
@@ -145,6 +159,8 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
         style={inputStyle}
       />
 
+      <button className="tend-text-button" style={{ marginBottom: 16 }} aria-expanded={detailsOpen} aria-controls="task-details" onClick={() => setDetailsOpen((open) => !open)}>{detailsOpen ? 'Hide room and effort' : 'Room, effort, and category (optional)'}</button>
+      <div id="task-details" hidden={!detailsOpen}>
       <Label>Where?</Label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         {ROOMS.map(([key, label, icon]) => (
@@ -176,6 +192,7 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
         ))}
       </div>
 
+      </div>
       <Label>When?</Label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
         {quick.map(([label, value]) => (
@@ -184,7 +201,7 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
           </Chip>
         ))}
       </div>
-      <input type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} style={inputStyle} />
+      <input type="date" aria-label="Due date" required value={dueOn} onChange={(e) => setDueOn(e.target.value)} style={inputStyle} />
 
       <Label>Repeat</Label>
       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -207,6 +224,7 @@ export function TaskModal({ task, onClose, onSave, onDelete, onToggle }) {
       <Label>Note</Label>
       <input
         value={note}
+        aria-label="Task note"
         onChange={(e) => setNote(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && submit()}
         placeholder="Optional"

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState, useId } from 'react';
 import { colors, tone, shadows, fonts } from '../theme';
 import { Avatar } from './ui';
 import { useHousehold } from '../household/HouseholdProvider';
@@ -10,13 +10,26 @@ import { useHousehold } from '../household/HouseholdProvider';
 // — the event editor and a job's pay rules. Everything else takes the default,
 // because a dialog wider than its content reads as an empty one.
 export function ModalShell({ title, onClose, children, footer, width = 460 }) {
+  const dialog = useRef(null);
+  const close = useRef(onClose);
+  const titleId = useId();
+  const [previousFocus] = useState(() => document.activeElement);
+  useEffect(() => { close.current = onClose; }, [onClose]);
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape') close.current();
+      if (e.key !== 'Tab') return;
+      const targets = [...dialog.current.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]')].filter((el) => el.getClientRects().length);
+      const first = targets[0];
+      const last = targets.at(-1);
+      if (!first) return;
+      if (e.shiftKey && (document.activeElement === first || !dialog.current.contains(document.activeElement))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (document.activeElement === last || !dialog.current.contains(document.activeElement))) { e.preventDefault(); first.focus(); }
     };
+    if (!dialog.current.contains(document.activeElement)) dialog.current.querySelector('input, button')?.focus();
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+    return () => { window.removeEventListener('keydown', onKey); if (previousFocus?.isConnected) previousFocus.focus(); };
+  }, [previousFocus]);
 
   return (
     <div
@@ -37,8 +50,9 @@ export function ModalShell({ title, onClose, children, footer, width = 460 }) {
       <div
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        ref={dialog}
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby={titleId}
         style={{
           width,
           maxWidth: '100%',
@@ -51,7 +65,7 @@ export function ModalShell({ title, onClose, children, footer, width = 460 }) {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
-          <div style={{ font: `400 25px ${fonts.serif}`, color: colors.ink }}>{title}</div>
+          <div id={titleId} style={{ font: `400 25px ${fonts.serif}`, color: colors.ink }}>{title}</div>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -106,11 +120,12 @@ export const inputStyle = {
   boxSizing: 'border-box',
 };
 
-export function PrimaryButton({ onClick, children }) {
+export function PrimaryButton({ onClick, children, disabled = false }) {
   return (
     <button
       onClick={onClick}
-      style={{ padding: '11px 22px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent }}
+      disabled={disabled}
+      style={{ padding: '11px 22px', borderRadius: 22, background: colors.accent, color: colors.onAccent, font: `600 13px ${fonts.sans}`, boxShadow: shadows.accent, opacity: disabled ? 0.6 : 1, cursor: disabled ? 'default' : 'pointer' }}
     >
       {children}
     </button>

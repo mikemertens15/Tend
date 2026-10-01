@@ -8,6 +8,17 @@
 
 export const RELEASES = [
   {
+    version: '1.3.0',
+    date: '2026-10-01',
+    name: 'Back home',
+    notes: [
+      ['changed', 'A simpler home hub. Home, Tasks, Calendar, and Groceries stay a tap away; Meals, Maintenance, Pets, and House info live in More. Hobbies, wishlists, goals, and earnings tracking have stepped out of the app. Your existing data is preserved.'],
+      ['changed', 'Home puts the things due today beside the next seven days of family plans. Add a task or event straight from the dashboard.'],
+      ['added', 'One task list for chores, errands, and maintenance jobs, with search, person filters, and Today, Upcoming, All open, and Completed views.'],
+      ['fixed', 'Task forms and event creation wait for successful saves and keep your input if a write fails. Task due labels refresh after midnight, and shared dialogs keep keyboard focus inside the form.'],
+    ],
+  },
+  {
     version: '1.2.0',
     date: '2026-08-22',
     name: 'In your pocket',

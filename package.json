@@ -1,12 +1,13 @@
 {
   "name": "home-project",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "node --test tests/*.test.js",
     "preview": "vite preview",
     "ios:sync": "npm run build && npx cap sync ios && npm run ios:widget",
     "ios:widget": "ruby ios/add-widget-target.rb",

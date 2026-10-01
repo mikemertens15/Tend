@@ -1,154 +1,86 @@
-import { colors, shadows, fonts } from '../theme';
+import { useState, useEffect } from 'react';
+import { colors, fonts } from '../theme';
 import { Avatar } from './ui';
 import { useHousehold } from '../household/HouseholdProvider';
 import { useIsPhone } from '../useMediaQuery';
 import { useSections } from '../data/useSections';
-import { BUILD } from '../data/releases';
 
-// The desktop bar. Its counterpart is MobileNav, and the two are kept honest
-// by both reading `useSections().groups` rather than the raw nav list — a
-// household's switched-off sections have to disappear from both or the app
-// contradicts itself about what exists.
-//
-// This is also where the version chip lives, which is the only route into the
-// release log (`#/releases`); it has no nav entry of its own because nobody
-// goes looking for a changelog on purpose.
-export function TopNav({ view, setView, onAdd, onOpenHousehold, hobbyRoute }) {
+export function TopNav({ view, setView, onAdd, onOpenHousehold }) {
   const { currentMember } = useHousehold();
   const phone = useIsPhone();
-  // Only the sections this household kept.
   const { groups } = useSections();
-
+  const [moreOpen, setMoreOpen] = useState(false);
+  useEffect(() => {
+    const close = (e) => {
+      if (e.key === 'Escape') setMoreOpen(false);
+    };
+    window.addEventListener('keydown', close);
+    return () => window.removeEventListener('keydown', close);
+  }, []);
+  const more = groups.slice(1).flatMap((g) => g.items);
+  const go = (key) => {
+    setMoreOpen(false);
+    setView(key);
+  };
   return (
-    <div
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 20,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 16,
-        padding: phone ? '12px 18px' : '16px 36px',
-        background: colors.navBar,
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        borderBottom: `1px solid ${colors.cardBorder}`,
-      }}
+    <header
+      className="tend-top-nav"
+      style={{ background: colors.navBar, borderBottom: `1px solid ${colors.cardBorder}` }}
     >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 30, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-          <div style={{ width: 28, height: 28, borderRadius: '50%', background: colors.accent }} />
-          <div style={{ font: `400 25px ${fonts.serif}`, color: colors.ink, lineHeight: 1 }}>Tend</div>
-          {/* Small, quiet, clickable — the release log behind it is the point. */}
-          <button
-            onClick={() => setView('releases')}
-            title="What's new"
-            aria-label={`Version ${BUILD.version} — what's new`}
-            style={{
-              padding: '3px 8px',
-              borderRadius: 20,
-              background: view === 'releases' ? colors.accent : colors.chipBg,
-              color: view === 'releases' ? colors.onAccent : colors.muted2,
-              font: `700 10px ${fonts.mono}`,
-              lineHeight: 1.4,
-              flexShrink: 0,
-            }}
-          >
-            v{BUILD.version}
-          </button>
-        </div>
-
-        {/* On a phone this collapses and the bottom tab bar takes over. */}
-        {!phone && (
-          <nav
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-              overflowX: 'auto',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none',
-            }}
-          >
-            {groups.map((group, gi) => (
-              <div key={group.label ?? 'home'} style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                {gi > 0 && (
-                  <span
-                    aria-hidden="true"
-                    style={{ width: 1, height: 18, background: colors.cardBorder, margin: '0 8px', flexShrink: 0 }}
-                  />
-                )}
-                {group.label && (
-                  <span
-                    style={{
-                      font: `600 9.5px ${fonts.sans}`,
-                      letterSpacing: '.06em',
-                      textTransform: 'uppercase',
-                      color: colors.faint,
-                      marginRight: 2,
-                      flexShrink: 0,
-                    }}
-                  >
-                    {group.label}
-                  </span>
-                )}
-                {group.items.map(([key, label]) => {
-                  // Keep Hobbies lit while you're inside one of its sections.
-                  const active = view === key || (key === 'hobbies' && hobbyRoute);
-                  return (
+      <button className="tend-brand" aria-label="Tend home" onClick={() => go('home')}>
+        <span aria-hidden="true" className="tend-brand-mark">
+          ⌂
+        </span>
+        <span style={{ font: `400 28px ${fonts.serif}` }}>Tend</span>
+      </button>
+      {!phone && (
+        <nav className="tend-desktop-nav" aria-label="Main navigation">
+          {groups[0].items.map(([key, label]) => (
+            <button key={key} aria-current={view === key ? 'page' : undefined} onClick={() => go(key)}>
+              {label}
+            </button>
+          ))}
+          <div style={{ position: 'relative' }}>
+            <button
+              aria-expanded={moreOpen}
+              aria-controls="tend-more-menu"
+              aria-current={more.some(([key]) => key === view) ? 'page' : undefined}
+              onClick={() => setMoreOpen((open) => !open)}
+            >
+              More <span aria-hidden="true">⌄</span>
+            </button>
+            {moreOpen && (
+              <>
+                <button
+                  className="tend-menu-backdrop"
+                  aria-label="Close navigation menu"
+                  onClick={() => setMoreOpen(false)}
+                />
+                <div id="tend-more-menu" className="tend-more-menu">
+                  {more.map(([key, label, icon]) => (
                     <button
                       key={key}
-                      onClick={() => setView(key)}
-                      aria-current={active ? 'page' : undefined}
-                      style={{
-                        padding: '8px 14px',
-                        borderRadius: 22,
-                        whiteSpace: 'nowrap',
-                        background: active ? colors.chipBg : 'transparent',
-                        color: active ? colors.ink : colors.muted2,
-                        font: `${active ? 600 : 500} 13.5px ${fonts.sans}`,
-                      }}
+                      aria-current={view === key ? 'page' : undefined}
+                      onClick={() => go(key)}
                     >
-                      {label}
+                      <span aria-hidden="true">{icon}</span> {label}
                     </button>
-                  );
-                })}
-              </div>
-            ))}
-          </nav>
-        )}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: phone ? 10 : 14, flexShrink: 0 }}>
-        <button
-          onClick={onAdd}
-          aria-label="Add a task"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 7,
-            padding: phone ? '8px 13px' : '9px 17px',
-            borderRadius: 22,
-            background: colors.accent,
-            color: colors.onAccent,
-            font: `600 13px ${fonts.sans}`,
-            boxShadow: shadows.accent,
-            whiteSpace: 'nowrap',
-          }}
-        >
-          <span style={{ fontSize: 16, lineHeight: 1, marginTop: -1 }}>+</span>
-          {!phone && 'Add task'}
+                  ))}
+                  <button onClick={() => go('releases')}>What’s new</button>
+                </div>
+              </>
+            )}
+          </div>
+        </nav>
+      )}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <button className="tend-primary" onClick={onAdd} aria-label="Add a task">
+          {phone ? '+' : '+ Add task'}
         </button>
-        <button
-          onClick={onOpenHousehold}
-          aria-label="Household and account"
-          title="Household & account"
-          style={{ borderRadius: '50%', padding: 0, lineHeight: 0, cursor: 'pointer' }}
-        >
-          <Avatar who={currentMember?.name} size={phone ? 32 : 36} />
+        <button onClick={onOpenHousehold} aria-label="Household and account" title="Household and account">
+          <Avatar who={currentMember?.name} size={34} />
         </button>
       </div>
-    </div>
+    </header>
   );
 }
